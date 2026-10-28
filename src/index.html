@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="{{meta.lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{meta.title}}</title>
+<meta name="description" content="{{meta.description}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{meta.title}}">
+<meta property="og:description" content="{{meta.description}}">
+<meta property="og:locale" content="{{meta.ogLocale}}">
+<meta name="color-scheme" content="dark light">
+{{alternates}}
+<script>try { var t = localStorage.getItem('agent-security-guide:theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap">
+<style>
+{{styles}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <a class="brand" href="#" id="brand">Agent <span>Security</span></a>
+    <div class="crumb" id="crumb"></div>
+    <div class="spacer"></div>
+    <a class="ghost" href="#" id="back" hidden><span aria-hidden="true">←</span><span class="back-t">{{ui.contents}}</span></a>
+    <nav class="langs" aria-label="{{ui.language}}">{{languages}}</nav>
+    <button type="button" class="ghost" id="theme">{{ui.themeLight}}</button>
+  </div>
+</header>
+
+<div class="layout">
+  <main class="doc" id="doc" aria-live="polite"></main>
+
+  <div class="stage" id="stage">
+    <svg id="scene" viewBox="0 0 1680 1480" preserveAspectRatio="xMidYMid meet" role="img" aria-label="{{meta.diagramLabel}}">
+      <defs>
+        <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.2" class="dotc"/></pattern>
+        <marker id="mk" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mk"/></marker>
+      </defs>
+      <rect class="floor" x="-3000" y="-3000" width="7700" height="7500"/>
+
+      <!-- the managed policy, behind the harness -->
+      <rect class="policy" data-c="policy" data-k="policy" x="376" y="296" width="1128" height="498" rx="40"/>
+
+      <!-- wiring from the tools to the machine and the internet -->
+      <path class="wire0" d="M650 956 V1140 M1160 1096 V1140 M410 1140 H1400 M410 1140 V1200 M730 1140 V1200 M1050 1140 V1200 M1400 1140 V1200 M1430 970 H1580 V284"/>
+      <path id="w_files" class="ex" data-k="w_files" d="M1160 1096 V1140 H410 V1200"/>
+      <path id="w_vault" class="ex" data-k="w_vault" d="M1160 1096 V1140 H730 V1200"/>
+      <path id="w_env" class="ex" data-k="w_env" d="M1160 1096 V1140 H1050 V1200"/>
+      <path id="w_svc" class="ex" data-k="w_svc" d="M1160 1096 V1140 H1400 V1200"/>
+      <path id="w_net" class="ex" data-k="w_net" d="M1430 970 H1580 V284"/>
+
+      <!-- guides for moving packets -->
+      <path id="g_prompt" class="guide" d="M500 258 V470 H940 V198"/>
+      <path id="g_up" class="guide" d="M940 470 V198"/>
+      <path id="g_down" class="guide" d="M940 198 V470"/>
+      <path id="g_call" class="guide" d="M940 470 H1380 V660 H1160 V856"/>
+      <path id="g_edit" class="guide" d="M940 470 H1380 V660 H1160 V830 H650 V956 V1140 H410 V1200"/>
+      <path id="g_result" class="guide" d="M1160 856 V660 H940 V198"/>
+      <path id="g_net" class="guide" d="M1430 970 H1580 V284"/>
+
+      <!-- you: a prompt window -->
+      <text class="wlbl" data-k="you" x="320" y="40">{{diagram.you}}</text>
+      <g class="node" data-k="you">
+        <rect class="panel" x="320" y="58" width="360" height="198" rx="16"/>
+        <path class="winbar" d="M336 58 H664 A16 16 0 0 1 680 74 V88 H320 V74 A16 16 0 0 1 336 58 Z"/>
+        <circle class="wdot" cx="340" cy="73" r="4"/><circle class="wdot" cx="354" cy="73" r="4"/><circle class="wdot" cx="368" cy="73" r="4"/>
+        <text class="wtitle" x="500" y="78" text-anchor="middle">{{diagram.promptWindow}}</text>
+        <rect class="bubble" id="you-bubble" x="340" y="102" width="250" height="38" rx="12"/>
+        <text class="bubble-t" id="you-msg" x="356" y="127">{{labels.fixTests}}</text>
+        <text class="note-t" id="you-note" x="340" y="172"></text>
+        <rect class="field" x="340" y="192" width="320" height="44" rx="10"/>
+        <text class="field-t" id="you-input" x="356" y="220">›</text>
+        <rect class="caret" id="you-caret" x="370" y="206" width="2" height="18"/>
+      </g>
+
+      <!-- the model, outside your machine -->
+      <text class="wlbl" data-k="model" x="940" y="40" text-anchor="middle">{{diagram.provider}}</text>
+      <g class="node" data-k="model">
+        <path class="panel" transform="translate(147 24)" d="M700 156 C664 156 656 112 690 104 C688 72 728 58 752 76 C768 46 830 44 846 78 C874 64 910 84 902 112 C930 118 928 156 896 156 Z"/>
+        <text class="title" x="940" y="130" text-anchor="middle" data-fit="150">{{diagram.model}}</text>
+        <text class="sub" x="940" y="155" text-anchor="middle" data-fit="150">{{diagram.modelSub}}</text>
+      </g>
+
+      <!-- the harness -->
+      <g>
+        <rect class="panel-h" x="400" y="320" width="1080" height="450" rx="26"/>
+        <path class="sep" d="M400 374 H1480"/>
+        <text class="lbl" x="428" y="354" data-fit="420">{{diagram.harness}}</text>
+        <text class="sub" x="1452" y="354" text-anchor="end" data-fit="420">{{diagram.runsOn}}</text>
+      </g>
+      <g data-c="policy" data-k="policy" data-pill="18">
+        <rect class="tag" x="600" y="282" width="240" height="28" rx="14"/>
+        <text class="tag-t" x="720" y="301" text-anchor="middle">{{diagram.policyTag}}</text>
+      </g>
+
+      <!-- loop edges -->
+      <path class="flow" data-k="e_you" d="M500 258 V424" marker-end="url(#mk)"/>
+      <path class="flow" data-k="e12" d="M570 470 H646" marker-end="url(#mk)"/>
+      <path class="flow" data-k="e23" d="M790 470 H866" marker-end="url(#mk)"/>
+      <path class="flow" data-k="e3m" d="M940 426 V192" marker-start="url(#mk)" marker-end="url(#mk)"/>
+      <path class="flow" data-k="e34" d="M1010 470 H1306" marker-end="url(#mk)"/>
+      <text class="edge-t" data-k="e34" x="1158" y="458" text-anchor="middle" data-fit="270">{{diagram.toolRequest}}</text>
+      <path class="flow" data-k="e45" d="M1380 512 V614" marker-end="url(#mk)"/>
+      <path class="flow" data-k="e56" d="M1310 660 H1234" marker-end="url(#mk)"/>
+      <path class="flow" data-k="e67" d="M1090 660 H1014" marker-end="url(#mk)"/>
+      <path class="flow" data-k="e73" d="M940 618 V516" marker-end="url(#mk)"/>
+      <text class="edge-t" data-k="e73" x="954" y="571" data-fit="120">{{diagram.result}}</text>
+
+      <!-- the seven stages -->
+      <g class="node" data-k="n1">
+        <rect class="panel" x="430" y="428" width="140" height="84" rx="14"/>
+        <text class="title" x="500" y="468" text-anchor="middle" data-fit="124">{{diagram.n1}}</text>
+        <text class="sub" x="500" y="492" text-anchor="middle" data-fit="126">{{diagram.n1Sub}}</text>
+        <circle class="num" cx="430" cy="428" r="13"/><text class="num-t" x="430" y="432.5" text-anchor="middle">1</text>
+      </g>
+      <g class="node" data-k="n2">
+        <rect class="panel" x="650" y="428" width="140" height="84" rx="14"/>
+        <text class="title" x="720" y="468" text-anchor="middle" data-fit="124">{{diagram.hook}}</text>
+        <text class="sub" x="720" y="492" text-anchor="middle" data-fit="126">UserPromptSubmit</text>
+        <circle class="num" cx="650" cy="428" r="13"/><text class="num-t" x="650" y="432.5" text-anchor="middle">2</text>
+      </g>
+      <g class="node" data-k="n3">
+        <rect class="panel" x="870" y="428" width="140" height="84" rx="14"/>
+        <text class="title" x="940" y="468" text-anchor="middle" data-fit="124">{{diagram.n3}}</text>
+        <text class="sub" x="940" y="492" text-anchor="middle" data-fit="126">{{diagram.n3Sub}}</text>
+        <circle class="num" cx="870" cy="428" r="13"/><text class="num-t" x="870" y="432.5" text-anchor="middle">3</text>
+      </g>
+      <g class="node" data-k="n4">
+        <rect class="panel" x="1310" y="428" width="140" height="84" rx="14"/>
+        <text class="title" x="1380" y="468" text-anchor="middle" data-fit="124">{{diagram.n4}}</text>
+        <text class="sub" x="1380" y="492" text-anchor="middle" data-fit="126">{{diagram.n4Sub}}</text>
+        <circle class="num" cx="1310" cy="428" r="13"/><text class="num-t" x="1310" y="432.5" text-anchor="middle">4</text>
+      </g>
+      <g class="node" data-k="n5">
+        <rect class="panel" x="1310" y="618" width="140" height="84" rx="14"/>
+        <text class="title" x="1380" y="658" text-anchor="middle" data-fit="124">{{diagram.hook}}</text>
+        <text class="sub" x="1380" y="682" text-anchor="middle" data-fit="126">PreToolUse</text>
+        <circle class="num" cx="1310" cy="618" r="13"/><text class="num-t" x="1310" y="622.5" text-anchor="middle">5</text>
+      </g>
+      <g class="node" data-k="n6">
+        <rect class="panel" x="1090" y="618" width="140" height="84" rx="14"/>
+        <text class="title" x="1160" y="658" text-anchor="middle" data-fit="124">{{diagram.n6}}</text>
+        <text class="sub" x="1160" y="682" text-anchor="middle" data-fit="126">{{diagram.n6Sub}}</text>
+        <circle class="num" cx="1090" cy="618" r="13"/><text class="num-t" x="1090" y="622.5" text-anchor="middle">6</text>
+      </g>
+      <g class="node" data-k="n7">
+        <rect class="panel" x="870" y="618" width="140" height="84" rx="14"/>
+        <text class="title" x="940" y="658" text-anchor="middle" data-fit="124">{{diagram.hook}}</text>
+        <text class="sub" x="940" y="682" text-anchor="middle" data-fit="126">PostToolUse</text>
+        <circle class="num" cx="870" cy="618" r="13"/><text class="num-t" x="870" y="622.5" text-anchor="middle">7</text>
+      </g>
+
+      <!-- scanner and policy badges on the stages -->
+      <g class="badge" data-c="scanP" data-k="n2" data-pill="12"><rect x="728" y="416" width="74" height="22" rx="11"/><text class="badge-t" x="765" y="431" text-anchor="middle">{{diagram.scanner}}</text></g>
+      <g class="badge" data-c="scanC" data-k="n5" data-pill="12"><rect x="1388" y="606" width="74" height="22" rx="11"/><text class="badge-t" x="1425" y="621" text-anchor="middle">{{diagram.scanner}}</text></g>
+      <g class="badge" data-c="scanR" data-k="n7" data-pill="12"><rect x="948" y="606" width="74" height="22" rx="11"/><text class="badge-t" x="985" y="621" text-anchor="middle">{{diagram.scanner}}</text></g>
+      <g class="badge" data-c="perm" data-k="n4" data-pill="12"><rect x="1388" y="416" width="74" height="22" rx="11"/><text class="badge-t" x="1425" y="431" text-anchor="middle">{{diagram.locked}}</text></g>
+
+      <!-- settings, read in order -->
+      <g class="node" data-k="cfg">
+        <rect class="panel" x="424" y="532" width="366" height="226" rx="16"/>
+        <text class="title" x="444" y="562" style="font-size:16px" data-fit="150">{{diagram.settings}}</text>
+        <text class="sub" x="770" y="562" text-anchor="end" data-fit="160">{{diagram.settingsSub}}</text>
+        <rect class="cfg-empty" data-cn="policy" x="440" y="576" width="334" height="36" rx="10"/>
+        <g data-c="policy">
+          <rect class="cfg-m" x="440" y="576" width="334" height="36" rx="10"/>
+          <path class="lock-c" d="M456 594 h11 v9 h-11 z M458 594 v-3.5 a3.5 3.5 0 0 1 7 0 v3.5"/>
+          <text class="cfg-t cfg-m-t" x="476" y="599" data-fit="140">{{diagram.cfgManaged}}</text>
+          <text class="cfg-v" id="cfg-r1" x="760" y="599" text-anchor="end" data-fit="130"></text>
+        </g>
+        <rect class="cfg-row" x="440" y="620" width="334" height="36" rx="10"/>
+        <text class="cfg-t" x="456" y="643" data-fit="140">{{diagram.cfgCommandLine}}</text>
+        <text class="cfg-v" id="cfg-r2" x="760" y="643" text-anchor="end" data-fit="140"></text>
+        <rect class="cfg-row" x="440" y="664" width="334" height="36" rx="10"/>
+        <text class="cfg-t" x="456" y="687" data-fit="140">{{diagram.cfgProject}}</text>
+        <text class="cfg-v" id="cfg-r3" x="760" y="687" text-anchor="end" data-fit="140"></text>
+        <rect class="cfg-row" x="440" y="708" width="334" height="36" rx="10"/>
+        <text class="cfg-t" x="456" y="731" data-fit="140">{{diagram.cfgUser}}</text>
+        <text class="cfg-v" id="cfg-r4" x="760" y="731" text-anchor="end" data-fit="140"></text>
+      </g>
+
+      <!-- from the tool stage to the tools -->
+      <g data-k="e6b">
+        <path class="flow" d="M1160 702 V830"/>
+        <path class="flow" d="M390 830 H1160"/>
+        <path class="flow" d="M390 830 V856" marker-end="url(#mk)"/>
+        <path class="flow" d="M650 830 V856" marker-end="url(#mk)"/>
+        <path class="flow" d="M1160 830 V852" marker-end="url(#mk)"/>
+      </g>
+
+      <!-- tools -->
+      <g class="node" data-k="web">
+        <rect class="panel" x="300" y="860" width="180" height="96" rx="16"/>
+        <circle class="ico" cx="326" cy="896" r="10"/><path class="ico" d="M316 896 H336 M326 886 C320 892 320 900 326 906 C332 900 332 892 326 886" style="stroke-width:1.6"/>
+        <text class="title" x="346" y="903" data-fit="120">{{diagram.web}}</text>
+        <text class="sub" x="320" y="934" data-fit="146">{{diagram.webSub}}</text>
+      </g>
+      <g class="node" data-k="ft">
+        <rect class="panel" x="540" y="860" width="220" height="96" rx="16"/>
+        <path class="ico" d="M560 886 h15 l7 7 v24 h-22 z M575 886 v7 h7"/>
+        <text class="title" x="596" y="905" data-fit="150">{{diagram.fileTools}}</text>
+        <text class="sub" x="560" y="936" data-fit="186">{{diagram.fileToolsSub}}</text>
+      </g>
+      <rect class="membrane" data-c="sandbox" data-k="sandbox" x="870" y="836" width="580" height="280" rx="32"/>
+      <g class="node" data-k="term">
+        <rect class="panel term-bg" x="890" y="856" width="540" height="240" rx="14"/>
+        <path class="term-bar" d="M904 856 H1416 A14 14 0 0 1 1430 870 V886 H890 V870 A14 14 0 0 1 904 856 Z"/>
+        <circle class="tdot" cx="910" cy="871" r="4"/><circle class="tdot" cx="924" cy="871" r="4"/><circle class="tdot" cx="938" cy="871" r="4"/>
+        <text class="term-title" x="1160" y="876" text-anchor="middle">zsh — ~/project</text>
+        <text class="term-t" id="t0" x="910" y="914"></text>
+        <text class="term-t" id="t1" x="910" y="940"></text>
+        <text class="term-t" id="t2" x="910" y="966"></text>
+        <text class="term-t" id="t3" x="910" y="992"></text>
+        <text class="term-t" id="t4" x="910" y="1018"></text>
+        <text class="term-t" id="t5" x="910" y="1044"></text>
+        <text class="term-t" id="t6" x="910" y="1070"></text>
+      </g>
+      <g data-c="sandbox" data-k="sandbox" data-pill="16" data-anchor="end">
+        <rect class="tag" x="1318" y="823" width="112" height="26" rx="13"/>
+        <text class="tag-t" x="1374" y="840.5" text-anchor="middle">{{diagram.sandboxTag}}</text>
+      </g>
+
+      <!-- your machine -->
+      <rect class="band" x="230" y="1160" width="1360" height="300" rx="30"/>
+      <text class="wlbl" x="254" y="1188">{{diagram.machine}}</text>
+      <g class="node" data-k="files">
+        <rect class="panel" x="250" y="1200" width="320" height="240" rx="14"/>
+        <path class="winbar" d="M264 1200 H556 A14 14 0 0 1 570 1214 V1230 H250 V1214 A14 14 0 0 1 264 1200 Z"/>
+        <path class="ico" d="M266 1208 h9 l4 4 h15 v13 h-28 z" style="stroke-width:1.6"/>
+        <text class="wtitle" x="304" y="1220">{{diagram.home}}</text>
+        <rect class="wr" data-c="sandbox" x="262" y="1240" width="296" height="126" rx="8"/>
+        <text class="wr-t" data-c="sandbox" x="548" y="1257" text-anchor="end" data-fit="120">{{diagram.writable}}</text>
+        <path class="ico" d="M270 1248 h8 l3 3 h11 v10 h-22 z" style="stroke-width:1.5"/><text class="row-t" x="300" y="1259">project/</text>
+        <path class="ico" d="M290 1272 h8 l3 3 h11 v10 h-22 z" style="stroke-width:1.5"/><text class="row-t" x="320" y="1283">src/</text>
+        <path class="ico" d="M290 1296 h8 l3 3 h11 v10 h-22 z" style="stroke-width:1.5"/><text class="row-t" x="320" y="1307">.git/  hooks · config</text>
+        <path class="ico" d="M292 1320 h11 l4 4 v11 h-15 z" style="stroke-width:1.5"/><text class="row-t" x="320" y="1331">.env</text>
+        <path class="ico" d="M292 1344 h11 l4 4 v11 h-15 z" style="stroke-width:1.5"/><text class="row-t" x="320" y="1355">package.json</text>
+        <path class="ico" d="M272 1368 h11 l4 4 v11 h-15 z" style="stroke-width:1.5"/><text class="row-t" x="300" y="1379">.bashrc</text>
+        <path class="ico" d="M272 1392 h11 l4 4 v11 h-15 z" style="stroke-width:1.5"/><text class="row-t" x="300" y="1403">.gitconfig</text>
+        <path class="ico" d="M270 1416 h8 l3 3 h11 v10 h-22 z" style="stroke-width:1.5"/><text class="row-t" x="300" y="1427">.config/autostart/</text>
+        <path class="lock-c" data-c="gitro" d="M528 1301 h12 v10 h-12 z M530 1301 v-4 a4 4 0 0 1 8 0 v4"/>
+        <path class="lock-c" data-c="dotenv" d="M528 1325 h12 v10 h-12 z M530 1325 v-4 a4 4 0 0 1 8 0 v4"/>
+        <path class="lock-c" data-c="startup" d="M528 1373 h12 v10 h-12 z M530 1373 v-4 a4 4 0 0 1 8 0 v4"/>
+        <path class="lock-c" data-c="startup" d="M528 1397 h12 v10 h-12 z M530 1397 v-4 a4 4 0 0 1 8 0 v4"/>
+        <path class="lock-c" data-c="startup" d="M528 1421 h12 v10 h-12 z M530 1421 v-4 a4 4 0 0 1 8 0 v4"/>
+      </g>
+      <g class="node" data-k="vault">
+        <rect class="panel" x="600" y="1200" width="260" height="240" rx="14"/>
+        <circle class="ico" cx="623" cy="1226" r="7"/><path class="ico" d="M630 1226 H644 M639 1226 V1232 M643 1226 V1230"/>
+        <text class="title" x="654" y="1232" style="font-size:17px" data-fit="190">{{diagram.credentials}}</text>
+        <rect class="vault-in" x="616" y="1248" width="228" height="176" rx="10"/>
+        <text class="row-t" x="632" y="1276">~/.ssh</text>
+        <text class="row-t" x="632" y="1302">~/.aws</text>
+        <text class="row-t" x="632" y="1328">~/.kube</text>
+        <text class="row-t" x="632" y="1354">~/.config/gh</text>
+        <text class="row-t" x="632" y="1380">~/.git-credentials</text>
+        <text class="row-t" x="632" y="1406">~/.mozilla</text>
+        <g class="door" data-c="creds">
+          <rect x="616" y="1248" width="228" height="176" rx="10"/>
+          <path class="lock-c" d="M722 1318 h16 v13 h-16 z M725 1318 v-5 a5 5 0 0 1 10 0 v5"/>
+          <text class="row-t" x="730" y="1364" text-anchor="middle" style="fill:var(--clay-ink)" data-fit="200">{{diagram.readDenied}}</text>
+        </g>
+      </g>
+      <g class="node" data-k="env">
+        <rect class="panel" x="890" y="1200" width="320" height="240" rx="14"/>
+        <text class="title" x="910" y="1232" style="font-size:17px" data-fit="280">{{diagram.environment}}</text>
+        <text class="env-t" x="910" y="1270">PATH=/usr/local/bin:/usr/bin</text>
+        <text class="env-t" x="910" y="1294">HOME=/home/you</text>
+        <text class="env-t" data-cg="envvars" x="910" y="1318">OPENAI_API_KEY=sk-•••••</text>
+        <text class="env-t" data-cg="envvars" x="910" y="1342">GITHUB_TOKEN=ghp_•••••</text>
+        <text class="env-t" data-cg="envvars" x="910" y="1366">AWS_SECRET_ACCESS_KEY=•••</text>
+        <text class="env-t" data-cg="envvars" x="910" y="1390">SSH_AUTH_SOCK=/run/user/…</text>
+        <text class="env-t" x="910" y="1414">DATABASE_URL=postgres://localhost</text>
+      </g>
+      <g class="node" data-k="svc">
+        <rect class="panel" x="1240" y="1200" width="320" height="240" rx="14"/>
+        <text class="title" x="1260" y="1232" style="font-size:17px" data-fit="280">{{diagram.services}}</text>
+        <circle class="sock" cx="1320" cy="1316" r="26"/><circle class="sock-h" cx="1312" cy="1316" r="3.4"/><circle class="sock-h" cx="1328" cy="1316" r="3.4"/>
+        <circle class="sock" cx="1400" cy="1316" r="26"/><circle class="sock-h" cx="1392" cy="1316" r="3.4"/><circle class="sock-h" cx="1408" cy="1316" r="3.4"/>
+        <circle class="sock" cx="1480" cy="1316" r="26"/><circle class="sock-h" cx="1472" cy="1316" r="3.4"/><circle class="sock-h" cx="1488" cy="1316" r="3.4"/>
+        <g class="cover" data-c="sockets"><circle cx="1320" cy="1316" r="26"/><path d="M1311 1307 L1329 1325 M1329 1307 L1311 1325"/></g>
+        <g class="cover" data-c="sockets"><circle cx="1400" cy="1316" r="26"/><path d="M1391 1307 L1409 1325 M1409 1307 L1391 1325"/></g>
+        <g class="cover" data-c="sockets"><circle cx="1480" cy="1316" r="26"/><path d="M1471 1307 L1489 1325 M1489 1307 L1471 1325"/></g>
+        <text class="row-t" x="1320" y="1374" text-anchor="middle">docker</text>
+        <text class="row-t" x="1400" y="1374" text-anchor="middle">d-bus</text>
+        <text class="row-t" x="1480" y="1374" text-anchor="middle">x11</text>
+      </g>
+      <g class="seal" data-c="creds" data-k="vault" transform="translate(730 1170)"><circle r="14"/><path d="M-5 -5 L5 5 M5 -5 L-5 5"/></g>
+      <g class="seal" data-c="envvars" data-k="env" transform="translate(1050 1170)"><circle r="14"/><path d="M-5 -5 L5 5 M5 -5 L-5 5"/></g>
+      <g class="seal" data-c="sockets" data-k="svc" transform="translate(1400 1170)"><circle r="14"/><path d="M-5 -5 L5 5 M5 -5 L-5 5"/></g>
+
+      <!-- the internet: a browser -->
+      <text class="wlbl" data-k="net" x="1220" y="40">{{diagram.internet}}</text>
+      <g class="node" data-k="net">
+        <rect class="panel" x="1220" y="56" width="400" height="228" rx="14"/>
+        <path class="winbar" d="M1234 56 H1606 A14 14 0 0 1 1620 70 V86 H1220 V70 A14 14 0 0 1 1234 56 Z"/>
+        <circle class="wdot" cx="1238" cy="71" r="4"/><circle class="wdot" cx="1252" cy="71" r="4"/><circle class="wdot" cx="1266" cy="71" r="4"/>
+        <path class="tab" d="M1284 86 V68 A7 7 0 0 1 1291 61 H1453 A7 7 0 0 1 1460 68 V86 Z"/>
+        <text class="tab-t" id="net-tab" x="1298" y="79">pypi.org</text>
+        <rect class="addr" x="1236" y="96" width="368" height="30" rx="15"/>
+        <path class="lock-i" d="M1251 109 h10 v8 h-10 z M1253 109 v-3 a3 3 0 0 1 6 0 v3"/>
+        <text class="addr-t" id="net-url" x="1270" y="116">https://pypi.org/simple/</text>
+        <text class="page-t t-h" id="net-l1" x="1244" y="162">Simple index</text>
+        <text class="page-t" id="net-l2" x="1244" y="196"></text>
+        <text class="page-t" id="net-l3" x="1244" y="222"></text>
+        <text class="page-t" id="net-l4" x="1244" y="248"></text>
+        <text class="page-t" id="net-l5" x="1244" y="272"></text>
+      </g>
+      <g class="proxy" data-c="proxy" data-k="proxy">
+        <rect x="1520" y="598" width="120" height="44" rx="22"/>
+        <path class="bars" d="M1536 608 V632 M1544 608 V632 M1616 608 V632 M1624 608 V632"/>
+        <text x="1580" y="625" text-anchor="middle" data-fit="64">{{diagram.proxy}}</text>
+      </g>
+
+      <g id="marks"></g>
+      <g id="fx"></g>
+    </svg>
+    <nav class="rail" id="rail" aria-label="{{ui.railLabel}}"></nav>
+  </div>
+</div>
+
+<script>
+{{script}}
+</script>
+</body>
+</html>
