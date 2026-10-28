@@ -17,7 +17,7 @@ jobs:
       - name: Read the Pages address
         id: pages
         if: github.event_name != 'pull_request'
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       # Fails when a locale is incomplete; then writes one page per language to dist/.
       - name: Validate and build
         run: node scripts/build.mjs
