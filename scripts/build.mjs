@@ -10,7 +10,8 @@
 //
 // Validation fails the build when a locale differs from the default one in shape: a missing or
 // extra key, an empty string, or a {placeholder} that does not match. It also checks that every
-// chapter and step in chapters.js has text, and that every @label it uses exists.
+// chapter in chapters.js has a kicker, a name and a deck, that every step has a heading and
+// paragraphs, and that every @label it uses exists.
 
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -23,8 +24,6 @@ const SRC = join(ROOT, 'src');
 const OUT = join(ROOT, 'dist');
 const CHECK_ONLY = process.argv.includes('--check');
 const SITE = process.env.SITE_URL ? process.env.SITE_URL.replace(/\/?$/, '/') : '';
-// Kinds of step whose kicker comes from ui.kinds; any other step id needs its own "k".
-const KINDS = ['protects', 'example', 'agents', 'covered'];
 
 const read = (p) => readFileSync(join(SRC, p), 'utf8');
 const errors = [];
@@ -42,7 +41,7 @@ for (const file of readdirSync(join(SRC, 'locales')).filter((f) => f.endsWith('.
 }
 const base = locales[DEFAULT];
 if (!base) fail(`locales/${DEFAULT}.json is missing; it is the reference for every other language`);
-const { FEATURES, HOME, NET } = vm.runInNewContext(chaptersJs + '\n;({ FEATURES, HOME, NET })');
+const { FEATURES, HOME } = vm.runInNewContext(chaptersJs + '\n;({ FEATURES, HOME })');
 
 /* ---------- validation ---------- */
 const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
@@ -75,21 +74,19 @@ if (base) {
   for (const f of FEATURES) {
     const text = base.chapters[f.id];
     if (!text) { fail(`${DEFAULT}.json: chapters.${f.id} is missing`); continue; }
+    for (const k of ['kick', 'name', 'deck']) if (typeof text[k] !== 'string') fail(`${DEFAULT}.json: chapters.${f.id}.${k} is missing`);
     for (const st of f.steps) {
       const tx = text.steps[st.id];
       if (!tx) fail(`${DEFAULT}.json: chapters.${f.id}.steps.${st.id} is missing`);
-      else if (!tx.k && !st.id.startsWith('how-') && !KINDS.includes(st.id)) fail(`${DEFAULT}.json: chapters.${f.id}.steps.${st.id} needs "k"`);
+      else if (typeof tx.h !== 'string' || !Array.isArray(tx.p)) fail(`${DEFAULT}.json: chapters.${f.id}.steps.${st.id} needs "h" and "p"`);
     }
     for (const id of Object.keys(text.steps)) if (!f.steps.some((s) => s.id === id)) fail(`${DEFAULT}.json: chapters.${f.id}.steps.${id} is not a step in chapters.js`);
-    for (const id of f.related) if (!FEATURES.some((g) => g.id === id)) fail(`chapters.js: ${f.id} relates to unknown chapter ${id}`);
   }
   for (const id of Object.keys(base.chapters)) if (!FEATURES.some((f) => f.id === id)) fail(`${DEFAULT}.json: chapters.${id} is not a chapter in chapters.js`);
   for (const st of HOME.steps) if (!base.ui.home.rail[st.id]) fail(`${DEFAULT}.json: ui.home.rail.${st.id} is missing`);
-  const used = new Set();
-  (function walk(v) {
-    if (typeof v === 'string') { if (v[0] === '@') used.add(v.slice(1)); }
-    else if (v && typeof v === 'object') Object.values(v).forEach(walk);
-  })([FEATURES, HOME, NET]);
+  // Labels are named as '@name', or inserted as {@name}, anywhere in chapters.js, including the
+  // functions that build per-agent content.
+  const used = new Set([...chaptersJs.matchAll(/(?:'@|\{@)(\w+)/g)].map((m) => m[1]));
   for (const k of used) if (!(k in base.labels)) fail(`chapters.js uses @${k}, which is not in labels`);
   for (const k of Object.keys(base.labels)) if (!used.has(k) && !templateKeys.includes('labels.' + k)) fail(`${DEFAULT}.json: labels.${k} is never used`);
   for (const key of templateKeys) if (!SPECIAL.has(key) && typeof lookup(base, key) !== 'string') fail(`index.html uses {{${key}}}, which is not text in ${DEFAULT}.json`);
