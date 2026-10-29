@@ -4,8 +4,26 @@ An animated guide to [Agent Security](https://github.com/RanulfoMNeto/agent-secu
 coding agent's harness works, and how each control acts on it, for Claude Code and Codex.
 Published with GitHub Pages in English and Brazilian Portuguese.
 
-Each control is an independent chapter. The text scrolls on the left; a fixed drawing of the
-harness on the right highlights and animates the part the text describes.
+The first chapter walks through the harness. Each of the others follows one example from start
+to finish and shows a control acting on it. The drawing of the harness fills the window and the
+text scrolls over its left side. Each chapter's example is a journey: the request leaves the
+session and visits the prompt, the hook, the context, the model, the permissions, the tools, the
+terminal and the network, and the answer comes back. Each step plays its part of the journey and
+continues where the previous step left it; a lit trail marks the way already taken, the camera
+follows the request, and a bar under the drawing names the current station, with pause, speed and
+replay.
+
+Each component of the harness appears once. The session is the agent's chat, the prompt an
+editor tab, the terminal a terminal and the internet a browser; the others are glass cards in
+which small cards carry the content, with a bar that marks its source or the decision taken. The
+hook is a band between the model's side of the harness (prompt, context, model) and the
+machine's side (terminal, tools, permissions), with one lane per event, so the request crosses
+it at each of them: after the model asks for a tool, the PreToolUse hook comes before the
+permission check, as in both agents. Each component shows a generic description; when the
+request passes over it, it fills with the real content it handles: the prompt and the context as each
+agent sends them to its API, the hook event's JSON in the lane of its event, the policy file that
+decided, the command in the terminal. A selector with the agents' logos switches that content
+between Claude Code and Codex.
 
 ## Build
 
@@ -29,9 +47,9 @@ adds canonical and `hreflang` links. The Pages workflow sets it.
 
 | Path | Content |
 |---|---|
-| `src/index.html` | Page template: header and drawing. `{{key}}` placeholders are filled from the locale |
+| `src/index.html` | Page template: header, drawing and journey bar. Each arrow of the drawing is also the path a request takes. `{{key}}` placeholders are filled from the locale |
 | `src/styles.css` | Styles, dark and light themes |
-| `src/chapters.js` | The chapters and what the drawing shows at each step. No text in any language |
+| `src/chapters.js` | The chapters as journeys: the stations each step visits and what it leaves in each component. No text in any language |
 | `src/app.js` | Rendering, animation and navigation |
 | `src/locales/<tag>.json` | All text of one language |
 | `scripts/build.mjs` | Validation and build |
@@ -52,13 +70,17 @@ changes.
 
 ### Writing conventions
 
-- `{token}`, `{n}`, `{total}` and `{name}` are placeholders. Keep them.
+- `{token}` and `{key}` are placeholders for the sample credentials. Keep them.
 - `` `text` `` is shown as code and `*text*` as emphasis. There is no other markup.
-- Commands, program output, paths, variable names, hook event names (`UserPromptSubmit`) and
-  `[REDACTED]` stay as they are: they are what the reader will see on screen.
-- `labels` holds the short texts in the drawing (moving packets, notes, terminal comments). The
-  drawing shrinks a label that is too long for its box, so prefer short wording there.
-- A list (`p`, `code`, `facts`) may have a different number of entries than in English.
+- Commands, program output, JSON, TOML, paths, variable names, hook event names
+  (`UserPromptSubmit`) and `[REDACTED]` stay as they are: they are what the reader will see on
+  screen. Labels inserted into JSON strings must not contain double quotes.
+- `labels` holds the short texts in the drawing: moving packets, chat messages and the lines that
+  fill the components. A filled line longer than its box is cut with an ellipsis, so prefer short
+  wording there.
+- A chapter has a `kick` (where it acts), a `name`, a `deck` and its `steps`; each step has a
+  heading `h` and paragraphs `p`. A `p` list may have a different number of entries than in
+  English.
 
 ## Publish
 
