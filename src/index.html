@@ -46,8 +46,6 @@
     <svg id="scene" viewBox="0 0 1232 1620" preserveAspectRatio="xMidYMid meet" role="img" aria-label="{{meta.diagramLabel}}">
       <defs>
         <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1.4" cy="1.4" r="1.1" class="dotc"/></pattern>
-        <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="gl-0"/><stop offset="1" class="gl-1"/></linearGradient>
-        <linearGradient id="glass-edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="ge-0"/><stop offset=".4" class="ge-1"/><stop offset="1" class="ge-2"/></linearGradient>
         <clipPath id="clip-ups"><rect x="60" y="826" width="340" height="202" rx="10"/></clipPath>
         <clipPath id="clip-post"><rect x="450" y="826" width="340" height="202" rx="10"/></clipPath>
         <clipPath id="clip-pre"><rect x="840" y="826" width="330" height="202" rx="10"/></clipPath>
@@ -104,109 +102,125 @@
       <!-- the session: the agent's chat, with the conversation title, the messages and the input box -->
       <g class="node" data-k="session" id="c-session">
         <rect class="panel box sess" x="60" y="40" width="580" height="260" rx="16"/>
-        <text class="sess-t" id="sess-t" x="80" y="68">{{diagram.session}}</text>
-        <path class="sess-chev" id="sess-chev" d="M0 0 L3.5 3.5 L7 0"/>
-        <g id="chat-msgs"></g>
-        <rect class="field" x="76" y="204" width="548" height="84" rx="18"/>
-        <text class="chat-ph" id="chat-ph" x="94" y="232">{{diagram.sessionPlaceholder}}</text>
-        <text class="chat-t" id="chat-in0" x="94" y="232"></text>
-        <text class="chat-t" id="chat-in1" x="94" y="250"></text>
-        <rect class="add-b" x="88" y="254" width="26" height="26" rx="8"/>
-        <path class="add-i" d="M101 261.5 V272.5 M95.5 267 H106.5"/>
-        <g class="send" id="send"><rect class="send-b" x="586" y="254" width="26" height="26" rx="8"/><path class="send-a" d="M599 273 V261.5 M594 266.5 L599 261.5 L604 266.5"/></g>
+        <g class="nb">
+          <text class="sess-t" id="sess-t" x="80" y="68">{{diagram.session}}</text>
+          <path class="sess-chev" id="sess-chev" d="M0 0 L3.5 3.5 L7 0"/>
+          <g id="chat-msgs"></g>
+          <rect class="field" x="76" y="204" width="548" height="84" rx="18"/>
+          <text class="chat-ph" id="chat-ph" x="94" y="232">{{diagram.sessionPlaceholder}}</text>
+          <text class="chat-t" id="chat-in0" x="94" y="232"></text>
+          <text class="chat-t" id="chat-in1" x="94" y="250"></text>
+          <rect class="add-b" x="88" y="254" width="26" height="26" rx="8"/>
+          <path class="add-i" d="M101 261.5 V272.5 M95.5 267 H106.5"/>
+          <g class="send" id="send"><rect class="send-b" x="586" y="254" width="26" height="26" rx="8"/><path class="send-a" d="M599 273 V261.5 M594 266.5 L599 261.5 L604 266.5"/></g>
+        </g>
       </g>
 
       <!-- memory: files outside the model, loaded into the context when a session starts -->
       <g class="node" data-k="memory" id="c-memory">
         <rect class="panel box" x="450" y="392" width="340" height="114" rx="14"/>
-        <path class="ico o-mem" transform="translate(465 404)" d="M4 2.5 H10 L12.5 5 V13.5 H4 Z M10 2.5 V5 H12.5 M6.2 8 H10.3 M6.2 10.6 H10.3"/>
-        <text class="title" x="489" y="418">{{diagram.memory}}</text>
-        <text class="desc" x="772" y="418" text-anchor="end" data-fit="170">{{diagram.memorySub}}</text>
-        <g id="mem-rows"></g>
+        <g class="nb">
+          <path class="ico o-mem" transform="translate(465 404)" d="M4 2.5 H10 L12.5 5 V13.5 H4 Z M10 2.5 V5 H12.5 M6.2 8 H10.3 M6.2 10.6 H10.3"/>
+          <text class="title" x="489" y="418">{{diagram.memory}}</text>
+          <text class="desc" x="772" y="418" text-anchor="end" data-fit="170">{{diagram.memorySub}}</text>
+          <g id="mem-rows"></g>
+        </g>
       </g>
 
       <!-- the prompt: one message, as it is sent to the API, in an editor -->
       <g class="node" data-k="prompt" id="c-prompt">
         <rect class="panel box ed" x="60" y="530" width="340" height="210" rx="14"/>
-        <path class="ed-bar" d="M74 530 H386 A14 14 0 0 1 400 544 V566 H60 V544 A14 14 0 0 1 74 530 Z"/>
-        <path class="ed-tab" d="M70 566 V544 A6 6 0 0 1 76 538 H186 A6 6 0 0 1 192 544 V566 Z"/>
-        <text class="ed-ic" x="80" y="557">{ }</text>
-        <text class="title t-tab" x="110" y="557">{{diagram.prompt}}</text>
-        <text class="meta" data-fm="prompt" x="386" y="556" text-anchor="end" data-max="180"></text>
-        <path class="ed-gut" d="M96 566 V740"/>
-        <g id="ln-prompt"></g>
-        <text class="desc" data-fsub="prompt" x="106" y="592">{{diagram.promptSub}}</text>
-        <g data-code="prompt" data-x="106" data-y="592" data-n="9" data-max="282"></g>
+        <g class="nb">
+          <path class="ed-bar" d="M74 530 H386 A14 14 0 0 1 400 544 V566 H60 V544 A14 14 0 0 1 74 530 Z"/>
+          <path class="ed-tab" d="M70 566 V544 A6 6 0 0 1 76 538 H186 A6 6 0 0 1 192 544 V566 Z"/>
+          <text class="ed-ic" x="80" y="557">{ }</text>
+          <text class="title t-tab" x="110" y="557">{{diagram.prompt}}</text>
+          <text class="meta" data-fm="prompt" x="386" y="556" text-anchor="end" data-max="180"></text>
+          <path class="ed-gut" d="M96 566 V740"/>
+          <g id="ln-prompt"></g>
+          <text class="desc" data-fsub="prompt" x="106" y="592">{{diagram.promptSub}}</text>
+          <g data-code="prompt" data-x="106" data-y="592" data-n="9" data-max="282"></g>
+        </g>
       </g>
 
       <!-- the context: the stack of messages sent to the model, each marked by where it came from -->
       <g class="node" data-k="context" id="c-context">
         <rect class="panel box" x="450" y="530" width="340" height="210" rx="16"/>
-        <path class="ico" transform="translate(466 545)" d="M8 2 L14 5 L8 8 L2 5 Z M2 8 L8 11 L14 8 M2 11 L8 14 L14 11"/>
-        <text class="title" x="490" y="558">{{diagram.context}}</text>
-        <text class="meta" data-fm="context" x="770" y="558" text-anchor="end" data-max="150"></text>
-        <text class="desc" data-fsub="context" x="470" y="584">{{diagram.contextSub}}</text>
-        <g id="ctx-cards"></g>
-        <g data-code="context" data-x="472" data-y="584" data-n="10" data-max="300"></g>
+        <g class="nb">
+          <path class="ico" transform="translate(466 545)" d="M8 2 L14 5 L8 8 L2 5 Z M2 8 L8 11 L14 8 M2 11 L8 14 L14 11"/>
+          <text class="title" x="490" y="558">{{diagram.context}}</text>
+          <text class="meta" data-fm="context" x="770" y="558" text-anchor="end" data-max="150"></text>
+          <text class="desc" data-fsub="context" x="470" y="584">{{diagram.contextSub}}</text>
+          <g id="ctx-cards"></g>
+          <g data-code="context" data-x="472" data-y="584" data-n="10" data-max="300"></g>
+        </g>
       </g>
 
       <!-- the model: its response to the context -->
       <g class="node" data-k="model" id="c-model">
         <rect class="panel box" x="840" y="530" width="330" height="210" rx="16"/>
-        <path class="ico o-model" transform="translate(856 545)" d="M8 1.8 C8.5 5.4 10.6 7.5 14.2 8 C10.6 8.5 8.5 10.6 8 14.2 C7.5 10.6 5.4 8.5 1.8 8 C5.4 7.5 7.5 5.4 8 1.8 Z"/>
-        <text class="title" x="880" y="558">{{diagram.model}}</text>
-        <text class="meta" data-fm="model" x="1150" y="558" text-anchor="end" data-max="150"></text>
-        <text class="desc" data-fsub="model" x="860" y="588">{{diagram.modelSub}}</text>
-        <g data-code="model" data-x="860" data-y="588" data-n="10" data-max="294"></g>
+        <g class="nb">
+          <path class="ico o-model" transform="translate(856 545)" d="M8 1.8 C8.5 5.4 10.6 7.5 14.2 8 C10.6 8.5 8.5 10.6 8 14.2 C7.5 10.6 5.4 8.5 1.8 8 C5.4 7.5 7.5 5.4 8 1.8 Z"/>
+          <text class="title" x="880" y="558">{{diagram.model}}</text>
+          <text class="meta" data-fm="model" x="1150" y="558" text-anchor="end" data-max="150"></text>
+          <text class="desc" data-fsub="model" x="860" y="588">{{diagram.modelSub}}</text>
+          <g data-code="model" data-x="860" data-y="588" data-n="10" data-max="294"></g>
+        </g>
       </g>
 
       <!-- the hook: one program, called at three events, between the model's side and the machine's -->
       <g class="node" data-k="hook" id="c-hook">
         <rect class="panel box" x="44" y="790" width="1142" height="250" rx="18"/>
-        <path class="ico" transform="translate(60 800)" d="M8 1.5 L13.5 3.5 V7.5 C13.5 11 11 13.5 8 14.5 C5 13.5 2.5 11 2.5 7.5 V3.5 Z M5.6 8 L7.4 9.8 L10.6 6.4"/>
-        <text class="title" x="84" y="814">{{diagram.hook}}</text>
-        <text class="meta hook-cmd" data-c="scan" x="1170" y="814" text-anchor="end">agent-secret-scan</text>
-        <g class="lane" data-lane="ups" id="lane-ups">
-          <rect class="lane-b box" x="60" y="826" width="340" height="202" rx="10"/>
-          <g clip-path="url(#clip-ups)"><rect class="beam" data-c="scan" x="60" y="798" width="340" height="28" style="--h: 230px"/><rect class="lane-bar" x="60" y="826" width="3" height="202"/></g>
-          <text class="lane-t" x="76" y="848">UserPromptSubmit</text>
-          <g data-code="hook.ups" data-x="76" data-y="870" data-n="10" data-max="310"></g>
-        </g>
-        <g class="lane" data-lane="post" id="lane-post">
-          <rect class="lane-b box" x="450" y="826" width="340" height="202" rx="10"/>
-          <g clip-path="url(#clip-post)"><rect class="beam" data-c="scan" x="450" y="798" width="340" height="28" style="--h: 230px"/><rect class="lane-bar" x="450" y="826" width="3" height="202"/></g>
-          <text class="lane-t" x="466" y="848">PostToolUse</text>
-          <g data-code="hook.post" data-x="466" data-y="870" data-n="10" data-max="310"></g>
-        </g>
-        <g class="lane" data-lane="pre" id="lane-pre">
-          <rect class="lane-b box" x="840" y="826" width="330" height="202" rx="10"/>
-          <g clip-path="url(#clip-pre)"><rect class="beam" data-c="scan" x="840" y="798" width="330" height="28" style="--h: 230px"/><rect class="lane-bar" x="840" y="826" width="3" height="202"/></g>
-          <text class="lane-t" x="856" y="848">PreToolUse</text>
-          <g data-code="hook.pre" data-x="856" data-y="870" data-n="10" data-max="300"></g>
+        <g class="nb">
+          <path class="ico" transform="translate(60 800)" d="M8 1.5 L13.5 3.5 V7.5 C13.5 11 11 13.5 8 14.5 C5 13.5 2.5 11 2.5 7.5 V3.5 Z M5.6 8 L7.4 9.8 L10.6 6.4"/>
+          <text class="title" x="84" y="814">{{diagram.hook}}</text>
+          <text class="meta hook-cmd" data-c="scan" x="1170" y="814" text-anchor="end">agent-secret-scan</text>
+          <g class="lane" data-lane="ups" id="lane-ups">
+            <rect class="lane-b box" x="60" y="826" width="340" height="202" rx="10"/>
+            <g clip-path="url(#clip-ups)"><rect class="beam" data-c="scan" x="60" y="798" width="340" height="28" style="--h: 230px"/><rect class="lane-bar" x="60" y="826" width="3" height="202"/></g>
+            <text class="lane-t" x="76" y="848">UserPromptSubmit</text>
+            <g data-code="hook.ups" data-x="76" data-y="870" data-n="10" data-max="310"></g>
+          </g>
+          <g class="lane" data-lane="post" id="lane-post">
+            <rect class="lane-b box" x="450" y="826" width="340" height="202" rx="10"/>
+            <g clip-path="url(#clip-post)"><rect class="beam" data-c="scan" x="450" y="798" width="340" height="28" style="--h: 230px"/><rect class="lane-bar" x="450" y="826" width="3" height="202"/></g>
+            <text class="lane-t" x="466" y="848">PostToolUse</text>
+            <g data-code="hook.post" data-x="466" data-y="870" data-n="10" data-max="310"></g>
+          </g>
+          <g class="lane" data-lane="pre" id="lane-pre">
+            <rect class="lane-b box" x="840" y="826" width="330" height="202" rx="10"/>
+            <g clip-path="url(#clip-pre)"><rect class="beam" data-c="scan" x="840" y="798" width="330" height="28" style="--h: 230px"/><rect class="lane-bar" x="840" y="826" width="3" height="202"/></g>
+            <text class="lane-t" x="856" y="848">PreToolUse</text>
+            <g data-code="hook.pre" data-x="856" data-y="870" data-n="10" data-max="300"></g>
+          </g>
         </g>
       </g>
 
       <!-- the tools: the agent's tools; the one in use is marked -->
       <g class="node" data-k="tools" id="c-tools">
         <rect class="panel box" x="450" y="1090" width="340" height="210" rx="16"/>
-        <path class="ico o-tool" transform="translate(466 1105)" d="M10.6 2.1 A3.6 3.6 0 0 0 6.6 6.8 L2.3 11.1 A1.5 1.5 0 0 0 4.4 13.2 L8.7 8.9 A3.6 3.6 0 0 0 13.4 4.9 L11.3 7 L9.3 6.7 L9 4.7 Z"/>
-        <text class="title" x="490" y="1118">{{diagram.tools}}</text>
-        <g id="tool-list"></g>
+        <g class="nb">
+          <path class="ico o-tool" transform="translate(466 1105)" d="M10.6 2.1 A3.6 3.6 0 0 0 6.6 6.8 L2.3 11.1 A1.5 1.5 0 0 0 4.4 13.2 L8.7 8.9 A3.6 3.6 0 0 0 13.4 4.9 L11.3 7 L9.3 6.7 L9 4.7 Z"/>
+          <text class="title" x="490" y="1118">{{diagram.tools}}</text>
+          <g id="tool-list"></g>
+        </g>
       </g>
 
       <!-- the permissions: the file or profile that decided, and its verdict -->
       <g class="node" data-k="perm" id="c-perm">
         <rect class="panel box" x="840" y="1090" width="330" height="210" rx="16"/>
-        <path class="ico" transform="translate(856 1105)" d="M3.5 7.5 H12.5 V14 H3.5 Z M5.5 7.5 V5 A2.5 2.5 0 0 1 10.5 5 V7.5"/>
-        <text class="title" x="880" y="1118">{{diagram.perm}}</text>
-        <text class="meta" data-fm="perm" x="1150" y="1118" text-anchor="end" data-max="160"></text>
-        <text class="desc" data-fsub="perm" x="860" y="1146">{{diagram.permSub}}</text>
-        <g data-code="perm" data-x="860" data-y="1146" data-n="7" data-max="294"></g>
-        <g class="verdict" id="perm-verdict">
-          <rect class="card" x="852" y="1260" width="306" height="28" rx="6"/>
-          <rect class="v-bar" x="852" y="1260" width="3" height="28" rx="1.5"/>
-          <path class="v-i" d=""/>
-          <text class="v-t" x="886" y="1278.5"></text>
+        <g class="nb">
+          <path class="ico" transform="translate(856 1105)" d="M3.5 7.5 H12.5 V14 H3.5 Z M5.5 7.5 V5 A2.5 2.5 0 0 1 10.5 5 V7.5"/>
+          <text class="title" x="880" y="1118">{{diagram.perm}}</text>
+          <text class="meta" data-fm="perm" x="1150" y="1118" text-anchor="end" data-max="160"></text>
+          <text class="desc" data-fsub="perm" x="860" y="1146">{{diagram.permSub}}</text>
+          <g data-code="perm" data-x="860" data-y="1146" data-n="7" data-max="294"></g>
+          <g class="verdict" id="perm-verdict">
+            <rect class="card" x="852" y="1260" width="306" height="28" rx="6"/>
+            <rect class="v-bar" x="852" y="1260" width="3" height="28" rx="1.5"/>
+            <path class="v-i" d=""/>
+            <text class="v-t" x="886" y="1278.5"></text>
+          </g>
         </g>
       </g>
 
@@ -216,10 +230,12 @@
       </g>
       <g class="node" data-k="terminal" id="c-terminal">
         <rect class="panel term-bg box" x="60" y="1090" width="340" height="210" rx="12"/>
-        <path class="term-bar" d="M72 1090 H388 A12 12 0 0 1 400 1102 V1116 H60 V1102 A12 12 0 0 1 72 1090 Z"/>
-        <circle class="tdot" cx="78" cy="1103" r="4"/><circle class="tdot" cx="92" cy="1103" r="4"/><circle class="tdot" cx="106" cy="1103" r="4"/>
-        <text class="term-title" x="230" y="1107" text-anchor="middle">bash — ~/project</text>
-        <g id="term-lines"></g>
+        <g class="nb">
+          <path class="term-bar" d="M72 1090 H388 A12 12 0 0 1 400 1102 V1116 H60 V1102 A12 12 0 0 1 72 1090 Z"/>
+          <circle class="tdot" cx="78" cy="1103" r="4"/><circle class="tdot" cx="92" cy="1103" r="4"/><circle class="tdot" cx="106" cy="1103" r="4"/>
+          <text class="term-title" x="230" y="1107" text-anchor="middle">bash — ~/project</text>
+          <g id="term-lines"></g>
+        </g>
       </g>
       <g data-c="sandbox" data-k="sandbox" data-pill="14" data-anchor="end">
         <rect class="tag" x="318" y="1063" width="92" height="22" rx="11"/>
@@ -233,18 +249,20 @@
       <!-- the internet, seen as a browser -->
       <g class="node" data-k="net" id="c-net">
         <rect class="panel box page" x="560" y="1380" width="500" height="220" rx="16"/>
-        <path class="winbar" d="M576 1380 H1044 A16 16 0 0 1 1060 1396 V1412 H560 V1396 A16 16 0 0 1 576 1380 Z"/>
-        <circle class="wdot" cx="580" cy="1396" r="4"/><circle class="wdot" cx="594" cy="1396" r="4"/><circle class="wdot" cx="608" cy="1396" r="4"/>
-        <path class="tab" d="M626 1412 V1394 A7 7 0 0 1 633 1387 H813 A7 7 0 0 1 820 1394 V1412 Z"/>
-        <path class="fav" d="M646 1400 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M640 1400 H652 M646 1394 C643 1397.5 643 1402.5 646 1406 C649 1402.5 649 1397.5 646 1394"/>
-        <text class="tab-t" id="net-tab" x="658" y="1405" data-max="152"></text>
-        <rect class="addr" x="576" y="1422" width="468" height="30" rx="15"/>
-        <path class="lock-i" d="M591 1435 h10 v8 h-10 z M593 1435 v-3 a3 3 0 0 1 6 0 v3"/>
-        <text class="addr-t" id="net-url" x="610" y="1442" data-max="420"></text>
-        <text class="page-t" data-nl="0" x="584" y="1488"></text>
-        <text class="page-t" data-nl="1" x="584" y="1518"></text>
-        <text class="page-t" data-nl="2" x="584" y="1542"></text>
-        <text class="page-t" data-nl="3" x="584" y="1566"></text>
+        <g class="nb">
+          <path class="winbar" d="M576 1380 H1044 A16 16 0 0 1 1060 1396 V1412 H560 V1396 A16 16 0 0 1 576 1380 Z"/>
+          <circle class="wdot" cx="580" cy="1396" r="4"/><circle class="wdot" cx="594" cy="1396" r="4"/><circle class="wdot" cx="608" cy="1396" r="4"/>
+          <path class="tab" d="M626 1412 V1394 A7 7 0 0 1 633 1387 H813 A7 7 0 0 1 820 1394 V1412 Z"/>
+          <path class="fav" d="M646 1400 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M640 1400 H652 M646 1394 C643 1397.5 643 1402.5 646 1406 C649 1402.5 649 1397.5 646 1394"/>
+          <text class="tab-t" id="net-tab" x="658" y="1405" data-max="152"></text>
+          <rect class="addr" x="576" y="1422" width="468" height="30" rx="15"/>
+          <path class="lock-i" d="M591 1435 h10 v8 h-10 z M593 1435 v-3 a3 3 0 0 1 6 0 v3"/>
+          <text class="addr-t" id="net-url" x="610" y="1442" data-max="420"></text>
+          <text class="page-t" data-nl="0" x="584" y="1488"></text>
+          <text class="page-t" data-nl="1" x="584" y="1518"></text>
+          <text class="page-t" data-nl="2" x="584" y="1542"></text>
+          <text class="page-t" data-nl="3" x="584" y="1566"></text>
+        </g>
       </g>
 
       <g id="fx"></g>

@@ -21,18 +21,10 @@
   /* an Agent Security control, and an action it blocks or limits */
   --as: #D97757;
   --as-ink: #EC9A79;
-  --as-soft: rgba(217, 119, 87, .14);
-  --as-glow: rgba(217, 119, 87, .42);
   /* the component the request is at */
   --act: rgba(250, 249, 245, .6);
-  --act-glow: rgba(250, 249, 245, .12);
   --dot: rgba(250, 249, 245, .07);
   --flow: rgba(250, 249, 245, .24);
-  --glass-0: rgba(255, 255, 255, .065);
-  --glass-1: rgba(255, 255, 255, .025);
-  --edge-0: rgba(255, 255, 255, .24);
-  --edge-1: rgba(255, 255, 255, .10);
-  --edge-2: rgba(255, 255, 255, .06);
   --chrome: rgba(38, 38, 36, .72);
   /* component surfaces */
   --surf-sess: #262624;
@@ -66,11 +58,9 @@
     --ink: #141413; --ink-2: #3D3D3A; --ink-3: #73726C;
     --line: rgba(31, 30, 29, .08); --line-2: rgba(31, 30, 29, .15);
     --o-user: #2F62B0; --o-mem: #2A7C5F; --o-model: #6A52CC; --o-tool: #946410; --o-ctx: #3D3D3A;
-    --as: #C6613F; --as-ink: #A8482A; --as-soft: rgba(198, 97, 63, .10); --as-glow: rgba(198, 97, 63, .28);
-    --act: rgba(20, 20, 19, .5); --act-glow: rgba(20, 20, 19, .10);
+    --as: #C6613F; --as-ink: #A8482A;
+    --act: rgba(20, 20, 19, .5);
     --dot: rgba(31, 30, 29, .09); --flow: rgba(31, 30, 29, .26);
-    --glass-0: rgba(255, 255, 255, .85); --glass-1: rgba(255, 255, 255, .55);
-    --edge-0: rgba(255, 255, 255, 1); --edge-1: rgba(31, 30, 29, .10); --edge-2: rgba(31, 30, 29, .14);
     --chrome: rgba(250, 249, 245, .75);
     --surf-sess: #FAF9F5; --surf-field: #FFFFFF; --surf-bubble: #F0EEE6;
     --surf-ed: #FFFFFF; --surf-ed-bar: rgba(31, 30, 29, .04);
@@ -83,11 +73,9 @@
   --ink: #141413; --ink-2: #3D3D3A; --ink-3: #73726C;
   --line: rgba(31, 30, 29, .08); --line-2: rgba(31, 30, 29, .15);
   --o-user: #2F62B0; --o-mem: #2A7C5F; --o-model: #6A52CC; --o-tool: #946410; --o-ctx: #3D3D3A;
-  --as: #C6613F; --as-ink: #A8482A; --as-soft: rgba(198, 97, 63, .10); --as-glow: rgba(198, 97, 63, .28);
-  --act: rgba(20, 20, 19, .5); --act-glow: rgba(20, 20, 19, .10);
+  --as: #C6613F; --as-ink: #A8482A;
+  --act: rgba(20, 20, 19, .5);
   --dot: rgba(31, 30, 29, .09); --flow: rgba(31, 30, 29, .26);
-  --glass-0: rgba(255, 255, 255, .85); --glass-1: rgba(255, 255, 255, .55);
-  --edge-0: rgba(255, 255, 255, 1); --edge-1: rgba(31, 30, 29, .10); --edge-2: rgba(31, 30, 29, .14);
   --chrome: rgba(250, 249, 245, .75);
   --surf-sess: #FAF9F5; --surf-field: #FFFFFF; --surf-bubble: #F0EEE6;
   --surf-ed: #FFFFFF; --surf-ed-bar: rgba(31, 30, 29, .04);
@@ -254,23 +242,17 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ink-2); outline
 .code, .meta, .tool-t, .mem-t, .term-t, .term-title, .tab-t, .addr-t, .lane-t, .ln, .ed-ic, .pk-tx, .page-t.t-mono { font-family: var(--mono) !important; font-size: 12px !important; }
 .floor { fill: url(#dots); }
 .dotc { fill: var(--dot); }
-.gl-0 { stop-color: var(--glass-0); }
-.gl-1 { stop-color: var(--glass-1); }
-.ge-0 { stop-color: var(--edge-0); }
-.ge-1 { stop-color: var(--edge-1); }
-.ge-2 { stop-color: var(--edge-2); }
-.panel { fill: url(#glass); stroke: url(#glass-edge); stroke-width: 1.2; transition: stroke .4s; }
+.panel { fill: var(--surface); stroke: var(--line-2); stroke-width: 1.2; transition: stroke .4s; }
 .panel-h { fill: color-mix(in srgb, var(--ink) 2%, transparent); stroke: var(--line-2); stroke-width: 1.2; }
 #scene .title, #scene .h-title { font-size: 16px; font-weight: 600; fill: var(--ink); letter-spacing: -.01em; }
 #scene .title.t-tab { font-size: 13px; }
 #scene .h-sub, #scene .desc, #scene .edge-t, #scene .mem-k { fill: var(--ink-3); }
 #scene .meta { fill: var(--ink-3); }
 .desc.gone, .chat-ph.gone { opacity: 0; }
-.node { transition: opacity .6s ease, filter .4s ease; }
+/* a component is its frame (.panel) and its content (.nb) */
+.nb { transition: opacity .6s ease; }
 .node.act > .panel { stroke: var(--act); stroke-width: 1.6; }
-.node.act { filter: drop-shadow(0 0 18px var(--act-glow)); }
 .node.act.no > .panel { stroke: var(--as); }
-.node.act.no { filter: drop-shadow(0 0 18px var(--as-glow)); }
 .sep { stroke: var(--line); stroke-width: 1.2; }
 
 /* .o-* sets --o, the color of a message's origin; .no sets it to the blocked state */
@@ -329,7 +311,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ink-2); outline
 #scene .lane-t { fill: var(--ink-3); transition: fill .3s; }
 .lane.on .lane-b { fill: color-mix(in srgb, var(--ink) 5%, transparent); stroke: var(--act); }
 #scene .lane.on .lane-t { fill: var(--ink); }
-.lane.on.no .lane-b { fill: var(--as-soft); stroke: var(--as); }
+.lane.on.no .lane-b { stroke: var(--as); }
 #scene .lane.on.no .lane-t { fill: var(--as-ink); }
 .lane-bar { fill: var(--line-2); transition: fill .3s; }
 .lane-bar.ok { fill: var(--ink-3); }
@@ -343,7 +325,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ink-2); outline
 /* the tools: one card per tool; the tool in use is marked */
 .tool .card { transition: fill .3s; }
 .tool-bar { fill: var(--o-tool); opacity: 0; transition: opacity .3s; }
-.tool.on .card { fill: color-mix(in srgb, var(--o-tool) 14%, var(--card)); }
+.tool.on .card { fill: color-mix(in srgb, var(--ink) 9%, transparent); }
 .tool.on .tool-bar { opacity: 1; }
 #scene .tool-t { fill: var(--ink-2); }
 #scene .tool.on .tool-t { fill: var(--ink); font-weight: 600; }
@@ -357,9 +339,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ink-2); outline
 #scene .verdict.no .v-t, #scene .verdict.lim .v-t { fill: var(--as-ink); }
 .verdict.no .v-i, .verdict.lim .v-i { stroke: var(--as-ink); }
 /* the memory: one card per file */
-.mem-bar { fill: var(--o-mem); opacity: .4; transition: opacity .3s; }
+.mem-bar { fill: var(--line-2); transition: fill .3s; }
 #scene .mem-t { fill: var(--ink-2); transition: fill .3s; }
-.mem.on .mem-bar { opacity: 1; }
+.mem.on .mem-bar { fill: var(--o-mem); }
 #scene .mem.on .mem-t { fill: var(--ink); }
 /* the terminal */
 .term-bg { fill: var(--term-bg); stroke: var(--line-2); }
@@ -389,13 +371,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ink-2); outline
 .flow[data-edge="terminal>proxy"], .flow[data-edge="proxy>net"] { stroke: none; marker-end: none; }
 .mk { fill: var(--flow); }
 .trail { fill: none; stroke: var(--o, var(--ink-2)); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; opacity: .9; transition: opacity .5s; }
-.trail.past { opacity: .3; }
+.trail.past { opacity: .5; }
 .trail.cur { filter: drop-shadow(0 0 5px var(--o)); }
 /* Agent Security controls: managed policy, sandbox and proxy */
-.policy { fill: var(--as-soft); fill-opacity: .18; stroke: var(--as); stroke-width: 1.6; stroke-dasharray: 12 9; }
+.policy { fill: none; stroke: var(--as); stroke-width: 1.6; stroke-dasharray: 12 9; }
 .tag { fill: var(--as); }
 #scene .tag-t { font-size: 12px; font-weight: 600; fill: #fff; }
-.membrane { fill: var(--as-soft); fill-opacity: .3; stroke: var(--as); stroke-width: 1.6; stroke-dasharray: 9 7; }
+.membrane { fill: none; stroke: var(--as); stroke-width: 1.6; stroke-dasharray: 9 7; }
 .rail2 { fill: none; stroke: var(--as); stroke-width: 2.2; }
 #scene .proxy-t { font-weight: 600; fill: var(--as-ink); }
 .callout { opacity: 0; transition: opacity .4s; }
@@ -411,9 +393,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ink-2); outline
 
 [data-k], [data-c], [data-cn] { transition: opacity .6s ease; }
 .is-off { opacity: 0 !important; pointer-events: none; }
-#scene.focus [data-k]:not(.lit):not([data-pill]) { opacity: .4; }
-#scene.focus [data-pill]:not(.lit) .tag { fill: color-mix(in srgb, var(--as) 40%, var(--bg)); }
-#scene.focus [data-pill]:not(.lit) .tag-t { fill-opacity: .55; }
+/* When a step is about some components, the content of the others is dimmed, and the controls
+   that take no part in it are drawn neutral. */
+#scene.focus .node:not(.lit) > .nb { opacity: .4; }
+#scene.focus [data-k]:not(.lit):not(.node):not([data-pill]) { opacity: .55; }
+#scene.focus [data-k]:not(.lit) :is(.membrane, .rail2) { stroke: var(--ink-3); }
+#scene.focus [data-k]:not(.lit) .proxy-t { fill: var(--ink-3); }
+#scene.focus [data-pill]:not(.lit) .tag { fill: var(--bg); stroke: var(--line-2); stroke-width: 1; }
+#scene.focus [data-pill]:not(.lit) .tag-t { fill: var(--ink-3); }
 
 @media (max-width: 999px) {
   :root { --docw: 100%; }
@@ -439,5 +426,5 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ink-2); outline
 }
 @media (prefers-reduced-motion: reduce) {
   .pk-halo, .term-c, .lane.on .beam { animation: none !important; }
-  [data-k], [data-c], [data-cn], .step, .doc, .panel, .node, .trail { transition: none !important; }
+  [data-k], [data-c], [data-cn], .step, .doc, .panel, .nb, .trail { transition: none !important; }
 }
