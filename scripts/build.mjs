@@ -41,7 +41,7 @@ for (const file of readdirSync(join(SRC, 'locales')).filter((f) => f.endsWith('.
 }
 const base = locales[DEFAULT];
 if (!base) fail(`locales/${DEFAULT}.json is missing; it is the reference for every other language`);
-const { FEATURES, HOME } = vm.runInNewContext(chaptersJs + '\n;({ FEATURES, HOME })');
+const { FEATURES } = vm.runInNewContext(chaptersJs + '\n;({ FEATURES })');
 
 /* ---------- validation ---------- */
 const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
@@ -83,7 +83,6 @@ if (base) {
     for (const id of Object.keys(text.steps)) if (!f.steps.some((s) => s.id === id)) fail(`${DEFAULT}.json: chapters.${f.id}.steps.${id} is not a step in chapters.js`);
   }
   for (const id of Object.keys(base.chapters)) if (!FEATURES.some((f) => f.id === id)) fail(`${DEFAULT}.json: chapters.${id} is not a chapter in chapters.js`);
-  for (const st of HOME.steps) if (!base.ui.home.rail[st.id]) fail(`${DEFAULT}.json: ui.home.rail.${st.id} is missing`);
   // Labels are named as '@name', or inserted as {@name}, anywhere in chapters.js, including the
   // functions that build per-agent content.
   const used = new Set([...chaptersJs.matchAll(/(?:'@|\{@)(\w+)/g)].map((m) => m[1]));

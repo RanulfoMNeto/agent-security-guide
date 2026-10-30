@@ -14,28 +14,25 @@
     "language": "Idioma",
     "themeLight": "Claro",
     "themeDark": "Escuro",
-    "railLabel": "Seções deste capítulo",
     "agent": "Agente",
     "forAgents": "Para Claude Code e Codex",
+    "player": "Seções e animação",
+    "prev": "Seção anterior",
+    "next": "Próxima seção",
     "play": "Continuar",
     "pause": "Pausar",
     "replay": "Repetir",
-    "speed": "Velocidade",
     "home": {
       "title": "Contendo o *agente de código.*",
       "lede": "Agentes de código rodam comandos na sua máquina com as suas permissões. Este guia mostra como funciona o harness de um agente e o que o Agent Security acrescenta a ele, no Claude Code e no Codex.",
       "start": "Começar a leitura",
       "contentsTitle": "Um harness e cinco controles.",
-      "contentsText": "O primeiro capítulo apresenta o harness e o desenho que acompanha o guia. Cada um dos outros segue um exemplo do começo ao fim, e o desenho mostra onde o controle age em cada passo. Os capítulos estão na ordem do loop, e cada um pode ser lido sozinho. Ao apontar para um capítulo, o desenho destaca onde ele age.",
-      "rail": {
-        "intro": "Introdução",
-        "contents": "Sumário"
-      }
+      "contentsText": "O primeiro capítulo apresenta o harness de um agente de código e o loop que ele executa. Cada um dos outros acompanha um controle do Agent Security em um exemplo, do pedido até a resposta. Os capítulos seguem a ordem do loop, e cada um pode ser lido sozinho."
     }
   },
   "diagram": {
     "session": "Sessão",
-    "sessionPlaceholder": "Escreva uma mensagem…",
+    "sessionPlaceholder": "Responder…",
     "prompt": "Prompt",
     "promptSub": "o pedido, como mensagem",
     "hook": "Hook",
@@ -58,7 +55,11 @@
     "proxy": "Proxy",
     "reply": "resposta",
     "toolRequest": "pedido de ferramenta",
-    "result": "resultado"
+    "result": "resultado",
+    "fromUser": "você",
+    "fromMemory": "memória",
+    "fromModel": "modelo",
+    "fromTool": "ferramenta"
   },
   "labels": {
     "fixTests": "Corrija os testes que falham",
@@ -117,7 +118,7 @@
           "h": "Dois programas: um modelo e um harness",
           "p": [
             "Um agente de código é feito de dois programas. O modelo, acessado pela API do provedor, só produz texto: uma resposta para você ou um pedido para usar uma ferramenta. O harness roda no seu computador. Ele recebe o seu pedido, conversa com o modelo, executa as ferramentas e devolve os resultados. Claude Code e Codex são harnesses.",
-            "Este capítulo acompanha um pedido comum, “corrija os testes que falham”, da sessão até a resposta. Cada parte do desenho mostra o conteúdo real que trata quando o pedido passa por ela, no formato do agente escolhido acima do desenho. A barra abaixo do desenho mostra em que ponto do caminho o pedido está."
+            "Este capítulo acompanha um pedido comum, “corrija os testes que falham”, da sessão até a resposta."
           ]
         },
         "prompt": {

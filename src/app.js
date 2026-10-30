@@ -4,15 +4,18 @@
 const NS = 'http://www.w3.org/2000/svg';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-const scene = $('#scene'), stage = $('#stage'), doc = $('#doc'), fx = $('#fx'), rail = $('#rail'), trailsG = $('#trails');
-const bar = $('#journey');
+const scene = $('#scene'), stage = $('#stage'), doc = $('#doc'), fx = $('#fx'), trailsG = $('#trails');
+const player = $('#player');
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const wide = () => matchMedia('(min-width: 1000px)').matches;
 const BY_ID = Object.fromEntries(FEATURES.map((f) => [f.id, f]));
+// Width of the blur transition beside the documentation column (--fade in styles.css).
+const FADE = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fade')) || 220;
 
 /* ---------- the agent ---------- */
-// The drawing shows the structures of one agent at a time; the text is the same for both.
-let agent = 'claude';
+// The diagram shows one agent's formats at a time; the documentation text is the same for every
+// agent. The first agent in AGENTS is the default; the last choice is remembered.
+let agent = Object.keys(AGENTS)[0];
 try { const a = localStorage.getItem('agent-security-guide:agent'); if (a in AGENTS) agent = a; } catch (e) {}
 // A value in chapters.js can depend on the agent.
 const pick = (v) => (typeof v === 'function' ? v(agent) : v);
@@ -29,7 +32,7 @@ const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>'
 // Locale text is plain; `code` and *emphasis* are its only markup.
 const md = (s) => esc(label(s)).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
 const chapterText = (f) => L.chapters[f.id];
-// The rail and the breadcrumb show text without its markup.
+// The breadcrumb shows text without its markup.
 const plain = (s) => label(s).replace(/[`*]/g, '');
 const num = (f) => String(FEATURES.indexOf(f) + 1).padStart(2, '0');
 
@@ -76,6 +79,8 @@ function fitAll() {
   $$('[data-pill]', scene).forEach(sizePill);
   const ht = $('.h-title', scene);
   $('#h-sub').setAttribute('x', (+ht.getAttribute('x') + textWidth(ht) + 10).toFixed(1));
+  const st = $('#sess-t', scene);
+  $('#sess-chev').setAttribute('transform', 'translate(' + (+st.getAttribute('x') + textWidth(st) + 7).toFixed(1) + ' 62.5)');
 }
 
 /* ---------- painting the drawing ---------- */
@@ -91,11 +96,11 @@ function paint(st, lit) {
 }
 
 /* ---------- code: JSON and TOML, as the agents write them ---------- */
-const CODE = {};
+const CODE = {}, LH = 15.5;
 $$('[data-code]', scene).forEach((g) => {
   const { x, y, n, max } = g.dataset;
   CODE[g.dataset.code] = Array.from({ length: +n }, (_, i) => {
-    const el = svg('text', { class: 'code', x, y: +y + i * 15.5, 'data-max': max });
+    const el = svg('text', { class: 'code', x, y: +y + i * LH, 'data-max': max });
     g.append(el);
     return el;
   });
@@ -103,10 +108,10 @@ $$('[data-code]', scene).forEach((g) => {
 // Strings, keys, literals and punctuation get their own tone; a whole line can carry one instead.
 // A string cut short by the ellipsis has no closing quote.
 const TOK = /("(?:[^"\\]|\\.)*"?)(\s*:)?|\b(true|false|null)\b|-?\b\d+\b|([{}[\],:=])|([^"{}[\],:=]+)/g;
-function codeLine(el, line) {
+function codeLine(el, line, max) {
   const [raw, tone] = lineOf(line);
   el.setAttribute('class', 'code' + (tone ? ' t-' + tone : ''));
-  fitTo(el, label(raw), +el.dataset.max, (s) => {
+  fitTo(el, label(raw), max, (s) => {
     el.textContent = '';
     if (tone) { el.textContent = s; return; }
     for (const m of s.matchAll(TOK)) {
@@ -131,47 +136,56 @@ function setCode(comp, v) {
     if (k >= 0) ls = ls.filter((_, i) => i !== k);
   }
   const slots = CODE[comp];
-  if (ls.length > slots.length) ls = [ls[0], '  …', ...ls.slice(ls.length - slots.length + 2)];
-  slots.forEach((el, i) => { el.style.opacity = ''; if (i < ls.length) codeLine(el, ls[i]); else el.textContent = ''; });
+  if (comp === 'context') ls = contextFit(ls, slots.length);
+  else if (ls.length > slots.length) ls = [ls[0], '  …', ...ls.slice(ls.length - slots.length + 2)];
+  // A message of the context leaves room on its first line for the name of where it came from.
+  const room = comp === 'context' ? contextCards(ls) : {};
+  slots.forEach((el, i) => { el.style.opacity = ''; if (i < ls.length) codeLine(el, ls[i], +el.dataset.max - (room[i] || 0)); else el.textContent = ''; });
   const sub = $('[data-fsub="' + comp + '"]', scene);
   if (sub) sub.classList.toggle('gone', ls.length > 0);
   const m = $('[data-fm="' + comp + '"]', scene);
   if (m) setText(m, meta || (STATIC_META[comp] ? AGENTS[agent].api : ''), +m.dataset.max);
   if (comp === 'proxy') $('#proxy-note').classList.toggle('on', ls.length > 0);
   if (comp === 'prompt') lineNumbers(ls.length);
-  if (comp === 'context') contextCards(ls);
-  // A lane's bar shows the hook's result: blue when it lets the event go on, clay when it stops it.
+  // A lane's bar shows the hook's result: "ok" when the event continues, "no" when the hook blocks
+  // or changes it.
   if (comp.startsWith('hook.')) {
     const r = ls.find((l) => toneOf(l));
-    $('#lane-' + comp.slice(5) + ' .lane-bar').setAttribute('class', 'lane-bar' + (r ? (toneOf(r) === 'deny' ? ' no' : ' ok') : ''));
+    $('#lane-' + comp.slice(5) + ' .lane-bar').setAttribute('class', 'lane-bar' + (r ? (toneOf(r) === 'ok' ? ' ok' : ' no') : ''));
   }
 }
 function lineNumbers(n) {
   const g = $('#ln-prompt');
   g.textContent = '';
-  for (let i = 0; i < n; i++) { const e = svg('text', { class: 'ln', x: 88, y: 592 + i * 15.5, 'text-anchor': 'end' }); e.textContent = i + 1; g.append(e); }
+  for (let i = 0; i < n; i++) { const e = svg('text', { class: 'ln', x: 88, y: 592 + i * LH, 'text-anchor': 'end' }); e.textContent = i + 1; g.append(e); }
 }
-// Each message of the context is a card, marked by where it came from: the memory, you, the
-// model or a tool.
-function roleOf(text) {
-  if (/tool_result|function_call_output/.test(text)) return 'tool';
-  if (/"assistant"|function_call|apply_patch/.test(text)) return 'model';
-  if (/system-reminder|AGENTS\.md/.test(text)) return 'mem';
-  return 'user';
+// Each context message is a card marked with its origin (memory, user, model or tool): a bar, and
+// the origin's name on its first line.
+const FROM = { user: 'fromUser', mem: 'fromMemory', model: 'fromModel', tool: 'fromTool' };
+const CTX_Y = +$('[data-code="context"]', scene).dataset.y;
+// The messages that do not fit give way, oldest first, to an ellipsis.
+function contextFit(ls, n) {
+  if (ls.length <= n) return ls;
+  const msgs = [];
+  ls.slice(1, -1).forEach((l) => { if (lineOf(l)[2] || !msgs.length) msgs.push([l]); else msgs[msgs.length - 1].push(l); });
+  while (msgs.length > 1 && msgs.flat().length + 3 > n) msgs.shift();
+  return [ls[0], '  …', ...msgs.flat(), ls[ls.length - 1]];
 }
 function contextCards(ls) {
-  const g = $('#ctx-cards');
+  const g = $('#ctx-cards'), room = {};
   g.textContent = '';
-  const groups = [];
   ls.forEach((l, i) => {
-    const raw = rawOf(l);
-    if (/^  \{/.test(raw)) groups.push({ from: i, to: i, text: raw });
-    else if (/^    /.test(raw) && groups.length && groups[groups.length - 1].to === i - 1) { groups[groups.length - 1].to = i; groups[groups.length - 1].text += raw; }
+    const from = lineOf(l)[2];
+    if (!from) return;
+    let n = 1;
+    while (i + n < ls.length && /^ {4}/.test(rawOf(ls[i + n]))) n++;
+    const y = CTX_Y + i * LH - 11.5, hh = n * LH - 2.5;
+    const name = svg('text', { class: 'ctx-o o-' + from, x: 770, y: CTX_Y + i * LH, 'text-anchor': 'end' });
+    name.textContent = L.diagram[FROM[from]];
+    g.append(svg('rect', { class: 'card', x: 462, y, width: 316, height: hh, rx: 5 }), svg('rect', { class: 'card-bar o-' + from, x: 462, y, width: 3, height: hh, rx: 1.5 }), name);
+    room[i] = textWidth(name) + 14;
   });
-  groups.forEach((c) => {
-    const y = 588 + c.from * 15.5 - 11.5, hh = (c.to - c.from + 1) * 15.5 + 3, r = roleOf(c.text);
-    g.append(svg('rect', { class: 'card', x: 462, y, width: 316, height: hh, rx: 5 }), svg('rect', { class: 'card-bar r-' + r, x: 462, y, width: 3, height: hh, rx: 1.5 }));
-  });
+  return room;
 }
 function setVerdict(line) {
   const g = $('#perm-verdict');
@@ -224,7 +238,7 @@ function buildLists() {
     g.append(svg('rect', { class: 'card', x: 462, y, width: 316, height: 20, rx: 5 }), svg('rect', { class: 'mem-bar', x: 462, y, width: 3, height: 20, rx: 1.5 }), tx, k);
     mr.append(g);
   });
-  $$('.a-logo, .h-logo', scene).forEach((u) => u.setAttribute('href', '#' + A.logo));
+  $$('.h-logo', scene).forEach((u) => u.setAttribute('href', '#' + A.logo));
   $$('.agents button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.agent === agent)));
 }
 function setTool(name) { name = pick(name); $$('.tool', scene).forEach((g) => g.classList.toggle('on', g.dataset.tool === name)); }
@@ -246,7 +260,7 @@ function setPage(p) {
 // "$" lines are typed as the command arrives; output follows it. Long lines wrap, as in a
 // terminal, and the latest rows stay in view.
 const TERM = Array.from({ length: 8 }, (_, i) => { const e = svg('text', { class: 'term-t', x: 76, y: 1138 + i * 20 }); $('#term-lines').append(e); return e; });
-const COLS = 43, TYPE_CMD = 24;
+const COLS = 42, TYPE_CMD = 24;
 let term = [];
 const termLine = (l) => (l.length === 3 ? { kind: l[0], text: label(l[1]), tone: l[2] }
   : l[0] === '$' ? { kind: '$', text: label(l[1]) } : { kind: '', text: label(l[0]), tone: l[1] });
@@ -295,10 +309,10 @@ function termPlan(ls) {
 }
 
 /* ---------- the session ---------- */
-// "you" is typed in the field and then sent; "sent" is already in the conversation; "note" is
-// a notice to you; "agent" is the agent's answer.
+// "you" is typed in the input and then sent; "sent" is already in the conversation; "note" is a
+// notice to the user; "agent" is the agent's answer, followed by the agent's logo.
 const chatG = $('#chat-msgs');
-const CHAT = { top: 108, bottom: 220, left: 82, right: 618, gap: 10 };
+const CHAT = { top: 86, bottom: 196, left: 82, right: 618, gap: 12 };
 const TYPE_CHAT = 28;
 let msgs = [];
 function wrap(text, max, cls) {
@@ -325,22 +339,28 @@ function chatBlock(m) {
   const textAt = (cls, x, y, s, anchor) => { const e = svg('text', { class: cls, x, y }); if (anchor) e.setAttribute('text-anchor', anchor); e.textContent = s; chatG.append(e); };
   if (m.who === 'note') {
     const ls = wrap(m.text, 470, 'chat-note');
-    return { h: ls.length * 16, draw(y) { ls.forEach((l, i) => textAt('chat-note', CHAT.right, y + 12 + i * 16, l, 'end')); } };
+    return { h: ls.length * 17, draw(y) { ls.forEach((l, i) => textAt('chat-note', CHAT.right, y + 12 + i * 17, l, 'end')); } };
   }
   if (m.who === 'agent') {
-    const ls = wrap(m.text, 470, 'chat-t');
-    return { h: ls.length * 19, draw(y) { ls.forEach((l, i) => textAt('chat-t', CHAT.left, y + 14 + i * 19, l)); } };
+    const ls = wrap(m.text, 520, 'chat-r');
+    return {
+      h: ls.length * 20 + 24,
+      draw(y) {
+        ls.forEach((l, i) => textAt('chat-r', CHAT.left, y + 14 + i * 20, l));
+        chatG.append(svg('use', { href: '#' + AGENTS[agent].logo, x: CHAT.left, y: y + ls.length * 20 + 6, width: 16, height: 16 }));
+      }
+    };
   }
   const ls = wrap(m.text, 380, 'chat-t');
   return {
-    h: ls.length * 19 + 14,
+    h: ls.length * 18 + 14,
     draw(y) {
-      const r = svg('rect', { class: 'bubble', y, height: ls.length * 19 + 14, rx: 14 });
+      const r = svg('rect', { class: 'bubble', y, height: ls.length * 18 + 14, rx: 12 });
       chatG.append(r);
-      const els = ls.map((l, i) => { const e = svg('text', { class: 'chat-t', y: y + 21 + i * 19 }); e.textContent = l; chatG.append(e); return e; });
-      const w = Math.max(...els.map(textWidth)) + 26;
+      const els = ls.map((l, i) => { const e = svg('text', { class: 'chat-t', y: y + 20 + i * 18 }); e.textContent = l; chatG.append(e); return e; });
+      const w = Math.max(...els.map(textWidth)) + 24;
       r.setAttribute('x', (CHAT.right - w).toFixed(1)); r.setAttribute('width', w.toFixed(1));
-      els.forEach((e) => e.setAttribute('x', (CHAT.right - w + 13).toFixed(1)));
+      els.forEach((e) => e.setAttribute('x', (CHAT.right - w + 12).toFixed(1)));
     }
   };
 }
@@ -354,11 +374,13 @@ function drawChat() {
   blocks.slice(start).forEach((b) => { b.draw(y); y += b.h + CHAT.gap; });
 }
 function setInput(text) {
-  const ls = text ? wrap(text, 470, 'chat-t').slice(-2) : [];
+  const ls = text ? wrap(text, 480, 'chat-t').slice(-2) : [];
   const [a, b] = [$('#chat-in0'), $('#chat-in1')];
   a.textContent = ls[0] || ''; b.textContent = ls[1] || '';
-  a.setAttribute('y', ls.length > 1 ? 252 : 262);
+  a.setAttribute('y', ls.length > 1 ? 224 : 232);
+  b.setAttribute('y', 242);
   $('#chat-ph').classList.toggle('gone', ls.length > 0);
+  $('#send').classList.toggle('on', ls.length > 0);
 }
 const toChat = (list) => list.map(([who, text]) => ({ who: who === 'you' ? 'sent' : who, text: label(text) }));
 function chatPlan(list) {
@@ -424,11 +446,15 @@ function boxOf(st) {
   else b = $('#c-' + st + ' .box', scene).getBBox();
   return { x: b.x, y: b.y, w: b.width, h: b.height };
 }
-const union = (a, b) => { const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y); return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y }; };
+const centerOf = (b) => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
 // Packet labels step aside while the packet crosses a component.
 let BOXES = null;
 const inside = (p) => (BOXES || (BOXES = $$('.node .box', scene).map((b) => b.getBBox())))
   .some((b) => p.x > b.x + 6 && p.x < b.x + b.width - 6 && p.y > b.y + 6 && p.y < b.y + b.height - 6);
+// Where what the request carries comes from: the station that produced it. What leaves the
+// context is all of it together.
+const SOURCE = { session: 'user', prompt: 'user', memory: 'mem', model: 'model', tools: 'tool', terminal: 'tool', proxy: 'tool', net: 'tool' };
+const toneClass = (o) => 'o-' + o.from + (o.state ? ' no' : '');
 
 /* ---------- the request on its way ---------- */
 const pk = (() => {
@@ -438,7 +464,7 @@ const pk = (() => {
   dot.append(svg('circle', { class: 'pk-halo', r: 8 }), svg('circle', { class: 'pk-head', r: 8 }));
   const lab = svg('g', { class: 'pk-lab' });
   const bg = svg('rect', { class: 'pk-bg', rx: 15, height: 30, y: -15 });
-  const tx = svg('text', { class: 'pk-tx', y: 5 });
+  const tx = svg('text', { class: 'pk-tx', y: 4.5 });
   lab.append(bg, tx);
   g.append(link, dot, lab);
   fx.append(g);
@@ -451,11 +477,12 @@ const pk = (() => {
       if (s === text) return;
       text = s;
       tx.textContent = s;
-      lw = (textWidth(tx) || s.length * 8.2) + 28;
+      lw = (textWidth(tx) || s.length * 7.2) + 28;
       bg.setAttribute('width', lw.toFixed(1)); bg.setAttribute('x', (-lw / 2).toFixed(1));
       tx.setAttribute('x', (-lw / 2 + 14).toFixed(1));
     },
-    state(s) { g.classList.toggle('no', s === 'no'); },
+    // The origin of what it carries, or the blocked state once a control has stopped it.
+    tone(from, state) { g.setAttribute('class', 'pk o-' + (from || 'ctx') + (state === 'no' ? ' no' : '')); },
     show(dotOn, labOn) { dot.style.opacity = dotOn ? 1 : 0; lab.style.opacity = link.style.opacity = labOn && text ? 1 : 0; },
     // Labels sit above horizontal stretches and beside vertical ones, and glide between; a
     // stopped request keeps its label on the side it came from.
@@ -473,7 +500,7 @@ const pk = (() => {
       link.setAttribute('x1', at.x.toFixed(1)); link.setAttribute('y1', at.y.toFixed(1));
       link.setAttribute('x2', x2.toFixed(1)); link.setAttribute('y2', y2.toFixed(1));
     },
-    reset() { text = null; off = null; tx.textContent = ''; this.show(false, false); this.state(''); }
+    reset() { text = null; off = null; tx.textContent = ''; this.show(false, false); this.tone('ctx', ''); }
   };
 })();
 
@@ -481,7 +508,6 @@ const pk = (() => {
 // A scene is the example of a group of steps: every visit from its first step to its last.
 const SPEED = 320;
 const STAY = { session: 1500, prompt: 1200, hook: 1300, context: 1200, memory: 1000, model: 1300, perm: 1400, tools: 500, terminal: 600, proxy: 1300, net: 1600 };
-const RATES = [1, 1.5, 2];
 const OUT_STAY = 2400;
 function sceneOf(n) {
   const steps = viewSteps();
@@ -495,20 +521,21 @@ function sceneOf(n) {
     ranges[i] = [visits.length, visits.length + r.length];
     visits.push(...r);
   }
-  // What the request carries out of each station, and whether it was stopped there.
-  let carry = '', state = '';
+  // What the request carries out of each station, where that came from, and whether it was
+  // stopped there.
+  let carry = '', state = '', from = 'ctx';
   const out = visits.map((v) => {
     const o = pick(v.out);
-    if (v.carry != null) { carry = v.carry; state = ''; }
+    if (v.carry != null) { carry = v.carry; state = ''; from = SOURCE[compOf(v.at)] || 'ctx'; }
     if (o) { carry = v.after != null ? v.after : carry; state = o === 'clean' ? '' : 'no'; }
-    return { carry, state };
+    return { carry, state, from };
   });
   return { start: s0, init: steps[s0].init || {}, visits, ranges, out };
 }
 const outOf = (v) => pick(v.out);
 const isPass = (v) => !!pick(v.pass);
 
-let run = null, clock = 0, paused = false, rate = 1;
+let run = null, clock = 0, paused = false;
 function stopRun() { run = null; pk.reset(); $$('.node.act, .lane.on', scene).forEach((e) => e.classList.remove('act', 'no', 'on')); }
 function activate(st, no) {
   $$('.node.act, .lane.on', scene).forEach((e) => e.classList.remove('act', 'no', 'on'));
@@ -552,14 +579,15 @@ function beginSeg(s) {
   const sc = run.sc, v = sc.visits[s.i];
   if (s.kind === 'move') {
     const o = sc.out[s.i - 1];
-    pk.text(o.carry); pk.state(o.state);
-    s.trail = trail(s.r, 'cur' + (o.state ? ' no' : ''));
+    pk.text(o.carry); pk.tone(o.from, o.state);
+    s.trail = trail(s.r, 'cur ' + toneClass(o));
     trailTo(s.trail, s.r, 0);
-    if (follow) aimRect(union(boxOf(s.from), boxOf(v.at)));
-    setBar(s.i, 'move');
+    // The camera slides from where it is to the next station, with the request.
+    s.c0 = aim && !aim.rect ? { x: aim.x, y: aim.y } : centerOf(boxOf(s.from));
+    s.c1 = centerOf(boxOf(v.at));
   } else if (s.kind === 'jump') {
     pk.show(false, false);
-    setBar(s.i, 'move');
+    if (follow) aimAt(centerOf(boxOf(v.at)));
   } else {
     const o = outOf(v);
     s.plan = enter(v, true);
@@ -571,9 +599,10 @@ function beginSeg(s) {
       const a = pointOn(end, Math.max(0, end.len - 6));
       if (Math.abs(s.p.x - a.x) > Math.abs(s.p.y - a.y)) s.side = s.p.x > a.x ? 'left' : 'right';
     }
-    if (o) { pk.text(v.after); pk.state(o === 'clean' ? '' : 'no'); }
-    if (follow) aimRect((v.frame || [v.at]).map(boxOf).reduce(union));
-    setBar(s.i, 'stay');
+    if (o) { pk.text(v.after); pk.tone(sc.out[s.i].from, o === 'clean' ? '' : 'no'); }
+    // A stay that shows more than one station visits each in turn.
+    s.frames = (v.frame || [v.at]).map((st) => centerOf(boxOf(st)));
+    if (follow) aimAt(s.frames[0]);
   }
 }
 function tickSeg(s, el) {
@@ -587,8 +616,10 @@ function tickSeg(s, el) {
     const a = pointOn(s.r, clamp(d - 3, 0, s.r.len)), b2 = pointOn(s.r, clamp(d + 3, 0, s.r.len));
     pk.place(p, Math.abs(b2.y - a.y) > Math.abs(b2.x - a.x));
     pk.show(true, !inside(p));
+    if (follow) aimAt({ x: s.c0.x + (s.c1.x - s.c0.x) * f, y: s.c0.y + (s.c1.y - s.c0.y) * f });
   } else if (s.kind === 'stay') {
     if (s.plan) s.plan.tick(el);
+    if (follow && s.frames.length > 1) aimAt(s.frames[Math.min(s.frames.length - 1, Math.floor(el / (s.dur / s.frames.length)))]);
     const o = outOf(v);
     // A stopped request stays in view, shaken; otherwise the component holds it.
     if (o === 'block' || o === 'ask' || o === 'clean') {
@@ -605,7 +636,7 @@ function endSeg(s) {
 }
 function tickRun(dt) {
   if (!run || run.done) return;
-  if (!paused) clock += dt * rate;
+  if (!paused) clock += dt;
   let guard = 0;
   while (guard++ < 8) {
     const s = run.segs[run.k];
@@ -622,104 +653,139 @@ function tickRun(dt) {
 function finish() {
   run.done = true;
   const last = run.sc.visits[run.b - 1];
-  bar.classList.add('ended');
   if (!last || !outOf(last) || outOf(last) === 'clean') pk.show(false, false);
+  playerState();
 }
 // The whole scene up to visit a, at once.
 function fastForward(sc, a) {
   enter({ fill: sc.init.fill }, false);
   if (sc.init.session) { msgs.push(...toChat(sc.init.session)); drawChat(); }
-  (sc.init.trail || []).forEach((n) => trail(route(...n.split('>')), 'past'));
+  (sc.init.trail || []).forEach((n) => trail(route(...n.split('>')), 'past o-' + SOURCE[n.split('>')[0]]));
   for (let i = 0; i < a; i++) {
     const v = sc.visits[i], prev = sc.visits[i - 1];
     const r = prev && route(prev.at, v.at);
-    if (r) trail(r, 'past' + (sc.out[i - 1].state ? ' no' : ''));
+    if (r) trail(r, 'past ' + toneClass(sc.out[i - 1]));
     enter(v, false);
   }
 }
 
-/* ---------- the journey bar ---------- */
-const NAME = { net: 'internet' };
-const stationName = (st) => L.diagram[NAME[compOf(st)] || compOf(st)];
-function buildBar(sc, a, b) {
-  const track = $('#j-track');
-  track.textContent = '';
-  sc.visits.forEach((v, i) => {
-    if (isPass(v)) return;
-    const s = document.createElement('i');
-    s.dataset.i = i;
-    s.className = i < a ? 'before' : i >= b ? 'after' : '';
-    track.append(s);
-  });
-  bar.classList.remove('ended', 'blocked');
+/* ---------- the player ---------- */
+// The previous section, the animation of this one, the next section, and which section is on.
+function playerState() {
+  const n = viewSteps().length;
+  $('#p-n').textContent = String(step + 1);
+  $('#p-of').textContent = String(n);
+  $('#p-prev').disabled = step <= 0;
+  $('#p-next').disabled = step >= n - 1;
+  const state = !run ? 'still' : run.done ? 'ended' : paused ? 'paused' : 'playing';
+  player.dataset.state = state;
+  const play = $('#p-play'), name = state === 'ended' ? L.ui.replay : state === 'playing' ? L.ui.pause : L.ui.play;
+  play.disabled = state === 'still';
+  play.setAttribute('aria-label', name);
+  play.title = name;
 }
-function setBar(i, phase) {
-  const sc = run.sc, v = sc.visits[i];
-  $('#j-name').textContent = stationName(v.at);
-  const o = outOf(v);
-  $('#j-detail').textContent = (phase === 'move' ? label(sc.out[i - 1] ? sc.out[i - 1].carry : '') : label(pick(v.say))) || '';
-  bar.classList.toggle('blocked', phase === 'stay' && !!o && o !== 'clean');
-  const segs = $$('#j-track i');
-  const total = segs.length, at = segs.findIndex((s) => +s.dataset.i >= i);
-  $('#j-count').textContent = (at < 0 ? total : at + 1) + ' / ' + total;
-  segs.forEach((s) => {
-    const k = +s.dataset.i;
-    if (k < run.a || k >= run.b) return;
-    s.className = k < i ? 'done' : k === i ? (phase === 'stay' && o && o !== 'clean' ? 'block' : 'cur') : '';
-  });
-}
-function showFinal(sc, b) {
-  const segs = $$('#j-track i');
-  segs.forEach((s) => { const k = +s.dataset.i; s.className = k < b ? 'before' : 'after'; });
-  const last = sc.visits[b - 1];
-  if (last) { $('#j-name').textContent = stationName(last.at); $('#j-detail').textContent = label(pick(last.say)) || ''; }
-  $('#j-count').textContent = segs.length + ' / ' + segs.length;
-  bar.classList.add('ended');
-}
-$('#j-play').addEventListener('click', () => {
+$('#p-play').addEventListener('click', () => {
+  if (!run) return;
+  if (run.done) { setStep(step, false, true); return; }
   paused = !paused;
-  bar.classList.toggle('paused', paused);
-  $('#j-play').setAttribute('aria-label', paused ? L.ui.play : L.ui.pause);
+  playerState();
 });
-$('#j-speed').addEventListener('click', () => {
-  rate = RATES[(RATES.indexOf(rate) + 1) % RATES.length];
-  $('#j-speed').textContent = rate + '×';
-});
-$('#j-replay').addEventListener('click', () => { paused = false; bar.classList.remove('paused'); setStep(step, false, true); });
+$('#p-prev').addEventListener('click', () => goTo(step - 1));
+$('#p-next').addEventListener('click', () => goTo(step + 1));
 
 /* ---------- camera ---------- */
-// The view eases toward a target: a fixed frame, or the stations the request is between.
-let vb = { x: 0, y: 0, w: 1252, h: 1590 }, goal = null, goalRect = null, follow = false;
+// Close-ups use one scale, derived from the window size, and the camera pans between stations
+// without zooming. An overview fits the whole diagram. A click on the diagram hands the camera to
+// the pointer: dragging pans and the wheel zooms; after IDLE ms without input, the camera returns
+// to the request.
+let vb = { x: 0, y: 0, w: 1252, h: 1590 }, goal = null, aim = null, follow = false;
+// The unobstructed part of the window: right of the documentation column and its blur, between
+// the header and the player.
 function safe() {
   const r = stage.getBoundingClientRect();
   const W = r.width || innerWidth, H = r.height || innerHeight;
-  if (!wide()) return { W, H, x: 8, y: 50, w: W - 16, h: H - 50 - (bar.hidden ? 12 : 78) };
-  const left = doc.getBoundingClientRect().right + 96;
-  return { W, H, x: left, y: 120, w: W - left - 52, h: H - 120 - (bar.hidden ? 30 : 116) };
+  if (!wide()) return { W, H, x: 8, y: 8, w: W - 16, h: H - 60 };
+  const left = doc.getBoundingClientRect().right + FADE * 0.55;
+  return { W, H, x: left, y: 80, w: W - left - 40, h: H - 80 - 78 };
 }
-function fit(rect, maxScale) {
+// On narrow screens a close-up spans the widest component, the session.
+const closeScale = (S) => clamp(Math.min(S.w / (wide() ? 700 : 600), S.h / (wide() ? 540 : 420)), 0.5, 1.15);
+const viewAt = (c, s, S) => ({ x: c.x - (S.x + S.w / 2) / s, y: c.y - (S.y + S.h / 2) / s, w: S.W / s, h: S.H / s });
+// An aim is a point, for a close-up, or a rectangle to show whole, for an overview.
+function goalOf(a) {
   const S = safe();
-  const s = Math.min(S.w / rect.w, S.h / rect.h, maxScale || 1.35);
-  const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
-  return { x: cx - (S.x + S.w / 2) / s, y: cy - (S.y + S.h / 2) / s, w: S.W / s, h: S.H / s };
+  if (!a.rect) return viewAt(a, closeScale(S), S);
+  const r = a.rect;
+  return viewAt(centerOf(r), Math.min(S.w / r.w, S.h / r.h, closeScale(S)), S);
 }
 function applyVB() { scene.setAttribute('viewBox', vb.x.toFixed(2) + ' ' + vb.y.toFixed(2) + ' ' + vb.w.toFixed(2) + ' ' + vb.h.toFixed(2)); }
-// Small stations are framed with room around them, so the view never jumps in too close.
-function aimRect(r, instant) {
-  const MIN_W = 640, MIN_H = 460, PAD = 44;
-  let x = r.x - PAD, y = r.y - PAD, w = r.w + 2 * PAD, hh = r.h + 2 * PAD;
-  if (w < MIN_W) { x -= (MIN_W - w) / 2; w = MIN_W; }
-  if (hh < MIN_H) { y -= (MIN_H - hh) / 2; hh = MIN_H; }
-  goalRect = { x, y, w, h: hh };
-  goal = fit(goalRect, 1.2);
-  if (instant || reduced()) { vb = { ...goal }; applyVB(); }
-}
-function aimFixed(r, instant) {
-  goalRect = r;
-  goal = fit(r, 1.35);
-  if (instant || reduced()) { vb = { ...goal }; applyVB(); }
+function aimAt(a, instant) {
+  aim = a;
+  goal = goalOf(a);
+  if ((instant || reduced()) && !free) { vb = { ...goal }; applyVB(); }
 }
 const camRect = (c) => ({ x: c[0], y: c[1], w: c[2], h: c[3] });
+const camAim = (c) => (c === CAM.all ? { rect: camRect(c) } : centerOf(camRect(c)));
+
+// The camera in the pointer's hands.
+const IDLE = 2000;
+const pointers = new Map();
+let free = false, lastInput = 0, tap = null;
+function takeCamera() { free = true; lastInput = performance.now(); stage.classList.add('free'); }
+function giveCamera() { free = false; pointers.clear(); stage.classList.remove('free', 'dragging'); }
+// Zooms by f around a point of the window, from a little below the overview to three close-ups.
+function zoomAt(px, py, f) {
+  const r = stage.getBoundingClientRect(), S = safe(), s0 = r.width / vb.w;
+  const s = clamp(s0 * f, Math.min(S.w / CAM.all[2], S.h / CAM.all[3]) * 0.9, closeScale(S) * 3);
+  const ux = vb.x + (px - r.left) / s0, uy = vb.y + (py - r.top) / s0;
+  vb = { x: ux - (px - r.left) / s, y: uy - (py - r.top) / s, w: r.width / s, h: r.height / s };
+  applyVB();
+}
+const spread = () => { const [a, b] = [...pointers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+stage.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || e.target.closest('button')) return;
+  // A mouse takes the camera at once; a finger only after a tap, so that a swipe still scrolls.
+  if (e.pointerType !== 'mouse' && !free) { tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; return; }
+  takeCamera();
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  stage.setPointerCapture(e.pointerId);
+  stage.classList.add('dragging');
+});
+stage.addEventListener('pointermove', (e) => {
+  if (!free) return;
+  lastInput = performance.now();
+  const p = pointers.get(e.pointerId);
+  if (!p) return;
+  if (pointers.size === 1) {
+    const k = vb.w / stage.getBoundingClientRect().width;
+    vb.x -= (e.clientX - p.x) * k; vb.y -= (e.clientY - p.y) * k;
+    p.x = e.clientX; p.y = e.clientY;
+    applyVB();
+  } else {
+    const d0 = spread();
+    p.x = e.clientX; p.y = e.clientY;
+    const [a, b] = [...pointers.values()];
+    if (d0 > 0) zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, spread() / d0);
+  }
+});
+function lift(e) {
+  pointers.delete(e.pointerId);
+  if (!pointers.size) stage.classList.remove('dragging');
+  if (tap && tap.id === e.pointerId) {
+    if (e.type === 'pointerup' && performance.now() - tap.t < 500 && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10) takeCamera();
+    tap = null;
+  }
+}
+stage.addEventListener('pointerup', lift);
+stage.addEventListener('pointercancel', lift);
+stage.addEventListener('wheel', (e) => {
+  if (!free) return;
+  e.preventDefault();
+  lastInput = performance.now();
+  // Pixels, lines or pages, as the device reports them.
+  const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);
+  zoomAt(e.clientX, e.clientY, Math.exp(-dy * 0.0015));
+}, { passive: false });
 
 /* ---------- the text column ---------- */
 let view = null, step = -1, current = null;
@@ -776,10 +842,6 @@ function renderFeature(f) {
   });
 }
 function viewSteps() { return view.steps.map((s) => s.s); }
-function stepLabels() {
-  if (view === HOME) return HOME.steps.map((s) => L.ui.home.rail[s.id]);
-  return view.steps.map((s) => plain(chapterText(view).steps[s.id].h));
-}
 
 /* ---------- states ---------- */
 let lit = [];
@@ -789,14 +851,13 @@ function setStep(n, instant, force) {
   const st = viewSteps()[n];
   current = st;
   stopRun();
+  paused = false;
   resetAll(st);
   const sc = st.run ? sceneOf(n) : null;
   const [a, b] = sc ? sc.ranges[n] : [0, 0];
   follow = !!sc && b > a && st.follow !== false && !reduced();
-  bar.hidden = !sc || b === a;
   if (sc) {
     fastForward(sc, a);
-    buildBar(sc, a, b);
     // The stations this step visits, and the arrows between them.
     const set = new Set(st.hl || []);
     for (let i = Math.max(0, a - 1); i < b; i++) {
@@ -809,10 +870,9 @@ function setStep(n, instant, force) {
     if (reduced() || b === a) {
       for (let i = a; i < b; i++) {
         const v = sc.visits[i], r = i > 0 && route(sc.visits[i - 1].at, v.at);
-        if (r) trail(r, sc.out[i - 1].state ? 'no' : '');
+        if (r) trail(r, toneClass(sc.out[i - 1]));
         enter(v, false);
       }
-      if (b > a) showFinal(sc, b);
       const last = sc.visits[b - 1];
       if (last && b > a) activate(last.at, outOf(last) && outOf(last) !== 'clean');
     } else {
@@ -821,10 +881,10 @@ function setStep(n, instant, force) {
     }
   } else lit = st.hl || [];
   paint(st, lit);
-  if (follow) aimRect(boxOf(sc.visits[Math.max(0, a - 1)].at), instant);
-  else aimFixed(camRect(st.cam || CAM.all), instant);
+  if (follow) aimAt(centerOf(boxOf(sc.visits[Math.max(0, a - 1)].at)), instant);
+  else aimAt(camAim(st.cam || CAM.all), instant);
   $$('.step', doc).forEach((s) => s.classList.toggle('on', +s.dataset.i === n));
-  $$('a', rail).forEach((el, i) => { el.classList.toggle('done', i < n); if (i === n) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current'); });
+  playerState();
   crumb();
 }
 function preview(f) {
@@ -836,17 +896,6 @@ function crumb() {
   c.textContent = '';
   if (view === HOME) return;
   c.append(t('span', 'n', num(view)), t('b', '', plain(chapterText(view).name)));
-}
-function buildRail() {
-  rail.textContent = '';
-  stepLabels().forEach((text, n) => {
-    const a = document.createElement('a');
-    a.href = '#' + (view.id || '');
-    a.setAttribute('aria-label', text);
-    a.append(t('span', '', text));
-    a.addEventListener('click', (e) => { e.preventDefault(); goTo(n); });
-    rail.append(a);
-  });
 }
 $$('.agents button').forEach((b) => b.addEventListener('click', () => {
   if (b.dataset.agent === agent) return;
@@ -867,7 +916,6 @@ function show(id) {
   const swap = () => {
     if (view === HOME) renderHome(); else renderFeature(view);
     sections = $$('.step', doc);
-    buildRail();
     $('#back').hidden = view === HOME;
     scrollTo(0, 0);
     step = -1;
@@ -929,12 +977,13 @@ document.addEventListener('keydown', (e) => {
   if (e.target && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(e.target.tagName)) return;
   if (e.key === 'ArrowRight') { e.preventDefault(); goTo(step + 1); }
   else if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(step - 1); }
+  else if (e.key === 'Escape' && free) { e.preventDefault(); giveCamera(); }
   else if (e.key === 'Escape' && view !== HOME) { e.preventDefault(); goRoute(''); }
 });
 addEventListener('resize', () => {
-  if (step < 0 || !goalRect) return;
-  goal = fit(goalRect, follow ? 1.2 : 1.35);
-  vb = { ...goal }; applyVB();
+  if (step < 0 || !aim) return;
+  goal = goalOf(aim);
+  if (!free) { vb = { ...goal }; applyVB(); }
 });
 
 /* ---------- theme ---------- */
@@ -961,7 +1010,9 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(64, now - last);
   last = now;
-  if (goal) {
+  // A pointer that rests gives the camera back to the request.
+  if (free && !pointers.size && now - lastInput > IDLE) giveCamera();
+  if (goal && !free) {
     const k = reduced() ? 1 : 1 - Math.exp(-dt / 480);
     vb = { x: vb.x + (goal.x - vb.x) * k, y: vb.y + (goal.y - vb.y) * k, w: vb.w + (goal.w - vb.w) * k, h: vb.h + (goal.h - vb.h) * k };
     applyVB();
@@ -969,7 +1020,6 @@ function frame(now) {
   tickRun(dt);
   requestAnimationFrame(frame);
 }
-$('#j-play').setAttribute('aria-label', L.ui.pause);
 themeLabel();
 buildLists();
 fitAll();

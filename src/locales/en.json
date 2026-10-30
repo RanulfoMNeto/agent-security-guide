@@ -14,28 +14,25 @@
     "language": "Language",
     "themeLight": "Light",
     "themeDark": "Dark",
-    "railLabel": "Sections of this chapter",
     "agent": "Agent",
     "forAgents": "For Claude Code and Codex",
+    "player": "Sections and animation",
+    "prev": "Previous section",
+    "next": "Next section",
     "play": "Play",
     "pause": "Pause",
     "replay": "Replay",
-    "speed": "Speed",
     "home": {
       "title": "Containing the *coding agent.*",
       "lede": "Coding agents run commands on your machine with your permissions. This guide shows how an agent harness works and what Agent Security adds to it, for Claude Code and Codex.",
       "start": "Start reading",
       "contentsTitle": "One harness and five controls.",
-      "contentsText": "The first chapter introduces the harness and the drawing that goes with the guide. Each of the others follows one example from start to finish, and the drawing shows where the control acts at each step. The chapters follow the order of the loop, and each one can be read on its own. Pointing at a chapter shows where it acts in the drawing.",
-      "rail": {
-        "intro": "Introduction",
-        "contents": "Contents"
-      }
+      "contentsText": "The first chapter introduces the harness of a coding agent and the loop it runs. Each of the others follows one Agent Security control through an example, from the request to the answer. The chapters follow the order of the loop, and each one can be read on its own."
     }
   },
   "diagram": {
     "session": "Session",
-    "sessionPlaceholder": "Write a message…",
+    "sessionPlaceholder": "Reply…",
     "prompt": "Prompt",
     "promptSub": "the request, as a message",
     "hook": "Hook",
@@ -58,7 +55,11 @@
     "proxy": "Proxy",
     "reply": "reply",
     "toolRequest": "tool request",
-    "result": "result"
+    "result": "result",
+    "fromUser": "you",
+    "fromMemory": "memory",
+    "fromModel": "model",
+    "fromTool": "tool"
   },
   "labels": {
     "fixTests": "Fix the failing tests",
@@ -117,7 +118,7 @@
           "h": "Two programs: a model and a harness",
           "p": [
             "A coding agent is made of two programs. The model, reached through the provider's API, only produces text: an answer for you, or a request to use a tool. The harness runs on your computer. It takes your request, talks to the model, runs the tools and returns their results. Claude Code and Codex are harnesses.",
-            "This chapter follows an ordinary request, “fix the failing tests”, from the session to the answer. Each part of the drawing shows the real content it handles when the request passes through it, in the format of the agent selected above the drawing. The bar below the drawing shows where the request is on its way."
+            "This chapter follows an ordinary request, “fix the failing tests”, from the session to the answer."
           ]
         },
         "prompt": {

